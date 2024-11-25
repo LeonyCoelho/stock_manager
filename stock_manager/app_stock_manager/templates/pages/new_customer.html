@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+<div class="container">
+        <div class="card mt-3">
+            <div class="card-header">
+                Novo Cliente
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'add_customer' %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="mb-2 col-12">
+                            <label class="form-label">Nome:</label>
+                            <input class="form-control" name="name" type="text" id="name" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col-2">
+                            <label class="form-label" for="cep">CEP</label>
+                            <input class="form-control" name="cep" type="text" id="cep" maxlength="9" onblur="pesquisacep(this.value);" />
+                        </div>
+                        <div class="mb-2 col-8">
+                            <label class="form-label">Rua</label>
+                            <input class="form-control" name="street" type="text" id="street" />
+                        </div>
+                        <div class="mb-2 col-2">
+                            <label class="form-label">Número:</label>
+                            <input class="form-control" name="address_number" type="text" id="address_number" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col">
+                            <label class="form-label">Bairro</label>
+                            <input class="form-control" name="district" type="text" id="district" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">Estado</label>
+                            <input class="form-control" name="state" type="text" id="state" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">Cidade</label>
+                            <input class="form-control" name="city" type="text" id="city" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col">
+                            <label class="form-label">CPF ou CNPJ</label>
+                            <input class="form-control" name="cpf_or_cnpj" type="text" id="cpf_or_cnpj" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">É CNPJ?</label>
+                            <select class="form-control" name="is_cnpj" id="is_cnpj">
+                                <option value="false">Não</option>
+                                <option value="true">Sim</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-control" name="observacoes" rows="4"></textarea>
+                    <button type="submit" class="btn btn-primary mt-3">Adicionar Cliente</button>
+                </form>
+                
+            </div>
+        </div>
+</div>
+{% endblock %}
