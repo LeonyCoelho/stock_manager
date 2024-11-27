@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+<div class="container">
+        <div class="card mt-3">
+            <div class="card-header">
+                Novo Fornecedor
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'add_supplier' %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="mb-2 col-8">
+                            <label class="form-label">Nome:</label>
+                            <input class="form-control" name="name" type="text" id="name" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">CNPJ</label>
+                            <input class="form-control" name="cnpj" type="text" id="cnpj" />
+                        </div>
+                    </div>
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-control" name="observations" rows="4"></textarea>
+                    <button type="submit" class="btn btn-primary mt-3">Adicionar Fornecedor</button>
+                    <a class="btn btn-secondary mt-3" href="{% url 'view_customers' %}">Voltar</a>
+                </form>
+                
+            </div>
+        </div>
+</div>
+{% endblock %}

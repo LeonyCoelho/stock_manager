@@ -20,23 +20,26 @@
           <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
               <li class="nav-item">
-                <a class="nav-link" href="#">Estoque</a>
+                <a class="nav-link" href="{% url 'view_products' %}">Produtos</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'view_stocks' %}">Estoque</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="#">Vendas</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">Clientes</a>
+                <a class="nav-link" href="{% url 'view_customers' %}">Clientes</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">Fornecedores</a>
+                <a class="nav-link" href="{% url 'view_suppliers' %}">Fornecedores</a>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                   Configurações
                 </a>
                 <ul class="dropdown-menu">
-                  <li><a class="dropdown-item" href="#">Sistema</a></li>
+                  <li><a class="dropdown-item" href="{% url 'settings' %}">Sistema</a></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="#">Perfil</a></li>
                   <li><a class="dropdown-item" href="#">Sair</a></li>

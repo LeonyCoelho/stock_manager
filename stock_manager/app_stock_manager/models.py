@@ -2,6 +2,11 @@ from django.db import models
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
 
 class Customer(models.Model):
     name = models.CharField(max_length=255)
@@ -22,21 +27,42 @@ class Customer(models.Model):
 
 class Supplier(models.Model):
     name = models.CharField(max_length=255)
-    cpf_or_cnpj = models.CharField(max_length=20, verbose_name="CPF ou CNPJ")
-    is_cnpj = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    cnpj = models.CharField(max_length=20, default=None)
+    observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 
 class Product(models.Model):
+    UNIT_CHOICES = [
+        ('g', 'Gramas'),
+        ('kg', 'Quilos'),
+        ('un', 'Unidades'),
+        ('m', 'Metros'),
+        ('cm', 'Centímetros'),
+    ]
+
     name = models.CharField(max_length=255)
-    category = models.CharField(max_length=255)
-    unity_type = models.CharField(max_length=50, verbose_name="Unit Type")
+    created = models.DateTimeField(auto_now_add=True)
+    weight = models.IntegerField(default='0')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    unit_type = models.CharField(
+            max_length=50,
+            verbose_name="Unit Type",
+            choices=UNIT_CHOICES,
+            default='un',
+        )
+    size = models.CharField(max_length=255, default='0x0')
+    quantity_per_package = models.CharField(max_length=10, default='0')
+    observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
+    def get_unit_type_display(self):
+            return dict(self.UNIT_CHOICES).get(self.unit_type, "Indefinido")
 
 class Stock(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stocks")
@@ -89,3 +115,4 @@ class PurchaseProduct(models.Model):
 
     def __str__(self):
         return f"{self.product.name} - {self.quantity}"
+    

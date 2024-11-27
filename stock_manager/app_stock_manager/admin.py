@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import (
+    Category,
     Customer,
     Supplier,
     Product,
@@ -10,6 +11,10 @@ from .models import (
     PurchaseProduct,
 )
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("id","name")
+    ordering = ("id",)
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
@@ -21,17 +26,15 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "cpf_or_cnpj", "is_cnpj")
-    search_fields = ("name", "cpf_or_cnpj")
-    list_filter = ("is_cnpj",)
+    list_display = ("id", "name", "cnpj")
+    search_fields = ("name", "cnpj")
     ordering = ("id",)
 
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "category", "unity_type")
-    search_fields = ("name", "category")
-    list_filter = ("category",)
+    list_display = ("id", "name", "unit_type")
+    search_fields = ("id", "name")
     ordering = ("id",)
 
 

@@ -1,21 +1,24 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-4">
+<div class="container mt-3">
     <div class="card">
-        <div class="card-header">Lista de clientes</div> 
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Lista de Fornecedores</span>
+            <span class="d-flex justify-content-between align-items-center">
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
+                </div>
+                <a href="{% url 'new_supplier' %}" class="btn btn-primary btn-sm  ms-3">Novo</a>
+            </span>
+        </div>        
         <div class="card-body">
-            <table class="table table-bordered table-striped" id="customer-table">
+            <table class="table table-bordered table-striped" id="supplier-table">
                 <thead class="table">
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>
-                        <th>CPF/CNPJ</th>
-                        <th>Tipo</th>
-                        <th>Endereço</th>
-                        <th>Bairro</th>
-                        <th>Cidade</th>
-                        <th>Estado</th>
-                        <th>CEP</th>
+                        <th>CNPJ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -34,17 +37,17 @@
 </div>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const apiUrl = "/api/customers/";
+        const apiUrl = "/api/suppliers/";
         const rowsPerPage = 20;
         let currentPage = 1;
-        let customers = [];
+        let suppliers = [];
 
         // Função para buscar dados da API
         async function fetchCustomers() {
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
-                customers = data.customers || [];
+                suppliers = data.suppliers || [];
                 renderTable();
                 renderPagination();
             } catch (error) {
@@ -54,25 +57,19 @@
 
         // Função para renderizar a tabela
         function renderTable() {
-            const tableBody = document.querySelector("#customer-table tbody");
+            const tableBody = document.querySelector("#supplier-table tbody");
             tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
 
             const start = (currentPage - 1) * rowsPerPage;
             const end = start + rowsPerPage;
-            const pageData = customers.slice(start, end);
+            const pageData = suppliers.slice(start, end);
 
-            pageData.forEach((customer, index) => {
+            pageData.forEach((supplier, index) => {
                 const row = `
                     <tr>
                         <td>${start + index + 1}</td>
-                        <td>${customer.name}</td>
-                        <td>${customer.cpf_or_cnpj}</td>
-                        <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>
-                        <td>${customer.street}, ${customer.address_number}</td>
-                        <td>${customer.district}</td>
-                        <td>${customer.city}</td>
-                        <td>${customer.state}</td>
-                        <td>${customer.cep}</td>
+                        <td>${supplier.name}</td>
+                        <td>${supplier.cnpj}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML("beforeend", row);
@@ -81,7 +78,7 @@
 
         // Função para renderizar os botões de paginação
         function renderPagination() {
-            const totalPages = Math.ceil(customers.length / rowsPerPage);
+            const totalPages = Math.ceil(suppliers.length / rowsPerPage);
             const pagination = document.querySelector("#pagination");
             pagination.innerHTML = ""; // Limpa os botões antes de renderizar
 

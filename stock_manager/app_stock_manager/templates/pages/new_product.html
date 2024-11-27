@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+<div class="container">
+        <div class="card mt-3">
+            <div class="card-header">
+                Novo Produto
+            </div>
+            <div class="card-body">
+                <form method="post" id="product-form">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-12">
+                            <label class="form-label">Nome:</label>
+                            <input class="form-control" name="name" type="text" id="name" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-3">
+                            <label class="form-label">Gramas:</label>
+                            <div class="input-group mb-3">
+                                <input class="form-control" name="weight" type="number" id="weight" min="0" required />
+                                <select class="form-select" name="unit_type" id="unit_type" required>
+                                    <option value="" selected hidden disabled>Unidade</option>
+                                </select>
+                                
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <label class="form-label">Formato:</label>
+                            <div class="input-group mb-3">
+                                <input class="form-control" name="size1" type="number" id="size1" min="0" required />
+                                <span class="input-group-text">X</span>
+                                <input class="form-control" name="size2" type="number" id="size2" min="0" required />
+                            </div>
+                        </div>
+                        <div class="col-2">
+                            <label class="form-label">Quantidade por Pacote:</label>
+                            <input class="form-control" name="quantity_per_pack" type="number" id="quantity_per_pack" min="0" required />
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label">Categoria</label>
+                            <select class="form-select" name="category" id="category">
+                                <option selected hidden disabled> Selecione</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-control" name="observations" rows="4" id="observations"></textarea>
+                    <button type="submit" class="btn btn-primary mt-3">Adicionar Produto</button>
+                    <a class="btn btn-secondary mt-3" href="{% url 'view_customers' %}">Voltar</a>
+                </form>
+                
+            </div>
+        </div>
+</div>
+
+<script>
+    document.getElementById("product-form").addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        // Captura os valores do formulário
+        const name = document.getElementById("name").value;
+        const weight = document.getElementById("weight").value;
+        const unitType = document.getElementById("unit_type").value;
+        const size1 = document.getElementById("size1").value;
+        const size2 = document.getElementById("size2").value;
+        const quantityPerPack = document.getElementById("quantity_per_pack").value;
+        const observations = document.getElementById("observations").value;
+
+        // Combina os valores de formato
+        const size = `${size1}x${size2}`;
+
+        // Cria o payload para a API
+        const payload = {
+            name,
+            weight,
+            unit_type: unitType,
+            size,
+            quantity_per_package: quantityPerPack,
+            observations,
+        };
+
+        try {
+            const response = await fetch("/add-product/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                alert("Produto adicionado com sucesso!");
+                window.location.reload(); // Atualiza a página
+            } else {
+                const errorData = await response.json();
+                alert("Erro ao adicionar produto: " + errorData.message);
+            }
+        } catch (error) {
+            console.error("Erro ao enviar o formulário:", error);
+            alert("Ocorreu um erro. Por favor, tente novamente.");
+        }
+    });
+
+    // Função para capturar o CSRF Token
+    function getCSRFToken() {
+        const name = "csrftoken";
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + "=")) {
+                return cookie.substring(name.length + 1);
+            }
+        }
+        return "";
+    }
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const unitTypeSelect = document.getElementById("unit_type");
+
+        try {
+            const response = await fetch("/api/unit-types/");
+            if (response.ok) {
+                const data = await response.json();
+                data.unit_types.forEach(unit => {
+                    const option = document.createElement("option");
+                    option.value = unit.value;
+                    option.textContent = unit.label;
+                    unitTypeSelect.appendChild(option);
+                });
+            } else {
+                console.error("Erro ao carregar tipos de unidade.");
+            }
+        } catch (error) {
+            console.error("Erro de comunicação com o servidor:", error);
+        }
+
+        const categorySelect = document.getElementById("category");
+
+        try {
+            const response = await fetch("/api/categories/");
+            if (response.ok) {
+                const data = await response.json();
+                data.categories.forEach(category => {
+                    const option = document.createElement("option");
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    categorySelect.appendChild(option);
+                });
+            } else {
+                console.error("Erro ao carregar tipos de unidade.");
+            }
+        } catch (error) {
+            console.error("Erro de comunicação com o servidor:", error);
+        }
+    });
+
+</script>
+
+{% endblock %}

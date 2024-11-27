@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-3">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Estoque</span>
+            <span class="d-flex justify-content-between align-items-center">
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
+                </div>
+                <!-- <a href="{% url 'new_product' %}" class="btn btn-primary btn-sm ms-3">Novo</a> -->
+            </span>
+        </div>
+
+        <div class="card-body">
+            <table class="table table-bordered table-striped" id="stock-table">
+                <thead class="table">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Quantidade</th>
+                        <th>Preço Unitario</th>
+                        <th>Preço por KG</th>
+                        <th>Preço Total</th>
+                        <th>Peso do Pacote (kg)</th>
+                        <th>Peso Total (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Conteúdo gerado dinamicamente via JavaScript -->
+                </tbody>
+            </table>
+            <nav>
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- Botões de paginação gerados dinamicamente -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Controles de Paginação -->
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const apiUrl = "/api/stocks/";
+    const rowsPerPage = 20;
+    let currentPage = 1;
+    let stockData = [];
+
+    // Função para buscar dados da API
+    async function fetchStock() {
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            stockData = data.stock || []; // Corrige o nome da propriedade
+            renderTable();
+            renderPagination();
+        } catch (error) {
+            console.error("Erro ao buscar estoques:", error);
+        }
+    }
+
+    // Função para calcular o peso do pacote
+    function calculatePackageWeight(weight, size, quantity_per_package) {
+        const [largura, altura] = size.split("x").map(dim => parseFloat(dim) / 100); // Converte para metros
+        const area = largura * altura; // Área em m²
+        const pesoPacoteGramas = weight * area * quantity_per_package; // Peso do pacote em gramas
+        return (pesoPacoteGramas / 1000).toFixed(2); // Peso em kg
+    }
+
+    // Função para renderizar a tabela
+    function renderTable() {
+        const tableBody = document.querySelector("#stock-table tbody");
+        tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = stockData.slice(start, end);
+
+        pageData.forEach((stock, index) => {
+            const weight = stock.product.weight || 0; // Gramatura do produto
+            const size = stock.product.size || "0x0"; // Formato do produto
+            const quantity_per_package = parseInt(stock.product.quantity_per_package, 10) || 0; // Folhas por pacote
+
+            const pesoPacote = calculatePackageWeight(weight, size, quantity_per_package);
+            const pesoTotal = (pesoPacote * stock.quantity).toFixed(2); // Multiplica pelo número de pacotes
+            // Preço por quilo
+            const precoPorKilo = (stock.price / pesoPacote).toFixed(2);
+            let modals = ""; // Para acumular os modais
+
+            pageData.forEach((stock, index) => {
+                const row = `
+                    <tr>
+                        <td>${start + index + 1}</td>
+                        <td>${stock.product.name}</td>
+                        <td>${stock.quantity}</td>
+                        <td>R$${stock.price}</td>
+                        <td>R$${precoPorKilo}</td>
+                        <td>R$${(stock.quantity * stock.price).toFixed(2)}</td>
+                        <td>${pesoPacote} kg</td>
+                        <td>${pesoTotal} kg</td>
+                        <td><button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#stockModal${stock.id}">edit</button></td>
+                    </tr>
+                `;
+
+                // Adiciona a linha da tabela
+                tableBody.insertAdjacentHTML("beforeend", row);
+
+                // Armazena o modal para inserir fora da tabela
+                modals += `
+                    <div class="modal fade" id="stockModal${stock.id}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="exampleModalLabel">${stock.product.name}</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    ...
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Insira os modais no final do body ou em outro contêiner adequado
+            document.querySelector("body").insertAdjacentHTML("beforeend", modals);
+            tableBody.insertAdjacentHTML("beforeend", row);
+        });
+    }
+
+    // Função para renderizar os botões de paginação
+    function renderPagination() {
+        const totalPages = Math.ceil(stockData.length / rowsPerPage);
+        const pagination = document.querySelector("#pagination");
+        pagination.innerHTML = ""; // Limpa os botões antes de renderizar
+
+        // Botão "Anterior"
+        pagination.insertAdjacentHTML(
+            "beforeend",
+            `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+                <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
+            </li>`
+        );
+
+        // Botões de página
+        for (let i = 1; i <= totalPages; i++) {
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${i === currentPage ? "active" : ""}">
+                    <button class="page-link" data-page="${i}">${i}</button>
+                </li>`
+            );
+        }
+
+        // Botão "Próximo"
+        pagination.insertAdjacentHTML(
+            "beforeend",
+            `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+                <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
+            </li>`
+        );
+
+        // Adiciona eventos aos botões
+        document.querySelectorAll("#pagination .page-link").forEach((button) => {
+            button.addEventListener("click", function () {
+                const page = parseInt(this.dataset.page, 10);
+                if (!isNaN(page) && page > 0 && page <= totalPages) {
+                    currentPage = page;
+                    renderTable();
+                    renderPagination();
+                }
+            });
+        });
+    }
+
+    // Inicializa a tabela
+    fetchStock();
+});
+
+</script>
+
+{% endblock %}
