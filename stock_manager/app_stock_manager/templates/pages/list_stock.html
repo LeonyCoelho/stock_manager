@@ -44,6 +44,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    
     const apiUrl = "/api/stocks/";
     const rowsPerPage = 20;
     let currentPage = 1;
@@ -79,6 +80,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const end = start + rowsPerPage;
         const pageData = stockData.slice(start, end);
 
+        let modals = ""; // Acumula os modais fora do loop
+
         pageData.forEach((stock, index) => {
             const weight = stock.product.weight || 0; // Gramatura do produto
             const size = stock.product.size || "0x0"; // Formato do produto
@@ -86,54 +89,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const pesoPacote = calculatePackageWeight(weight, size, quantity_per_package);
             const pesoTotal = (pesoPacote * stock.quantity).toFixed(2); // Multiplica pelo número de pacotes
-            // Preço por quilo
-            const precoPorKilo = (stock.price / pesoPacote).toFixed(2);
-            let modals = ""; // Para acumular os modais
+            const precoPorKilo = (stock.price / pesoPacote).toFixed(2); // Preço por quilo
 
-            pageData.forEach((stock, index) => {
-                const row = `
-                    <tr>
-                        <td>${start + index + 1}</td>
-                        <td>${stock.product.name}</td>
-                        <td>${stock.quantity}</td>
-                        <td>R$${stock.price}</td>
-                        <td>R$${precoPorKilo}</td>
-                        <td>R$${(stock.quantity * stock.price).toFixed(2)}</td>
-                        <td>${pesoPacote} kg</td>
-                        <td>${pesoTotal} kg</td>
-                        <td><button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#stockModal${stock.id}">edit</button></td>
-                    </tr>
-                `;
+            const row = `
+                <tr>
+                    <td>${start + index + 1}</td>
+                    <td>${stock.product.name}</td>
+                    <td>${stock.quantity}</td>
+                    <td>R$${stock.price}</td>
+                    <td>R$${precoPorKilo}</td>
+                    <td>R$${(stock.quantity * stock.price).toFixed(2)}</td>
+                    <td>${pesoPacote} kg</td>
+                    <td>${pesoTotal} kg</td>
+                    <td><button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#stockModal${stock.id}">edit</button></td>
+                </tr>
+            `;
 
-                // Adiciona a linha da tabela
-                tableBody.insertAdjacentHTML("beforeend", row);
+            // Adiciona a linha na tabela
+            tableBody.insertAdjacentHTML("beforeend", row);
 
-                // Armazena o modal para inserir fora da tabela
-                modals += `
-                    <div class="modal fade" id="stockModal${stock.id}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="exampleModalLabel">${stock.product.name}</h1>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    ...
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="button" class="btn btn-primary">Save changes</button>
-                                </div>
+            // Adiciona o modal correspondente
+            modals += `
+                <div class="modal fade" id="stockModal${stock.id}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="exampleModalLabel">${stock.product.name}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="editStockForm${stock.id}">
+                                    <label class="form-label">Quantidade</label>
+                                    <input type="number" class="form-control" name="quantity" value="${stock.quantity}">
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                <button type="button" class="btn btn-primary" onclick="updateStock(${stock.id})">Salvar</button>
                             </div>
                         </div>
                     </div>
-                `;
-            });
-
-            // Insira os modais no final do body ou em outro contêiner adequado
-            document.querySelector("body").insertAdjacentHTML("beforeend", modals);
-            tableBody.insertAdjacentHTML("beforeend", row);
+                </div>
+            `;
         });
+
+        // Insira todos os modais no final do body
+        document.querySelector("body").insertAdjacentHTML("beforeend", modals);
     }
 
     // Função para renderizar os botões de paginação
@@ -183,8 +184,56 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Inicializa a tabela
     fetchStock();
-});
+    
+    window.updateStock = async function (stockId) {
+        const form = document.querySelector(`#editStockForm${stockId}`);
+        const formData = new FormData(form);
+        const url = `/api/stocks/${stockId}/update/`;
 
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                body: JSON.stringify({
+                    quantity: formData.get("quantity"),
+                }),
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+            });
+
+            if (response.ok) {
+                alert("Estoque atualizado com sucesso!");
+                document.querySelector(`#stockModal${stockId}`).querySelector(".btn-close").click();
+                fetchStock(); // Atualiza a tabela
+            } else {
+                const errorData = await response.json();
+                console.error("Erro ao atualizar o estoque:", errorData);
+                alert("Erro ao atualizar o estoque.");
+            }
+        } catch (error) {
+            console.error("Erro ao enviar requisição:", error);
+            alert("Erro ao enviar requisição.");
+        }
+    };
+
+    // Função utilitária para buscar o CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+});
 </script>
 
 {% endblock %}

@@ -17,6 +17,8 @@ urlpatterns = [
     path('add-customer/', views.add_customer, name='add_customer'),
     path('add-supplier/', views.add_supplier, name='add_supplier'),
     path('add-product/', views.add_product, name='add_product'),
+    path("api/stocks/<int:stock_id>/update/", views.update_stock, name="update_stock"),
+    path('api/products/<int:product_id>/delete/', views.delete_product, name='delete_product'),
     # ========== GET API =====================================================
     path('api/categories/', views.get_all_categories, name='get_all_categories'),
     path('api/customers/', views.get_all_customers, name='get_all_customers'),

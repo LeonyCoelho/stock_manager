@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from .models import Customer, Product, Stock, Supplier, Category
 from django.views.decorators.csrf import csrf_exempt
@@ -139,6 +139,13 @@ def add_product(request):
                 quantity_per_package=int(quantity_per_package),
                 observations=observations,
             )
+
+            # Cria o perfil no estoque com quantidade inicial 0
+            Stock.objects.create(
+                product=product,
+                quantity=0,  # Quantidade inicial
+                price=0.0,   # Preço inicial, ajuste se necessário
+            )
             return JsonResponse({"message": "Produto adicionado com sucesso!", "id": product.id})
         except json.JSONDecodeError as e:
             # Erro ao decodificar JSON
@@ -148,6 +155,41 @@ def add_product(request):
             return JsonResponse({"error": f"Erro ao processar a solicitação: {str(e)}"}, status=500)
 
     # Se o método não for POST
+    return JsonResponse({"error": "Método não permitido."}, status=405)
+    
+@csrf_exempt
+def update_stock(request, stock_id):
+    if request.method == "POST":
+        try:
+            stock = get_object_or_404(Stock, id=stock_id)
+            data = json.loads(request.body)
+
+            # Atualiza a quantidade
+            new_quantity = data.get("quantity")
+            if new_quantity is not None:
+                stock.quantity = new_quantity
+                stock.save()
+
+            return JsonResponse({"success": True, "message": "Estoque atualizado com sucesso."})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "message": "Método não permitido."}, status=405)
+
+@csrf_exempt
+def delete_product(request, product_id):
+    """
+    View para deletar um produto pelo ID.
+    Aceita apenas requisições DELETE.
+    """
+    if request.method == "POST":
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            product.delete()
+            return JsonResponse({"message": "Produto deletado com sucesso."}, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Método não permitido."}, status=405)
 # ======================= API =================================================
 
@@ -197,7 +239,7 @@ def get_all_products(request):
         'weight': product.weight,
         'unit_type': product.get_unit_type_display(),
         'size': product.size,
-        'category': product.category.name,
+        # 'category': product.category.name,
         'quantity_per_package': product.quantity_per_package,
     } for product in products]
 
@@ -217,7 +259,7 @@ def get_all_stocks(request):
             'weight': item.product.weight,  # Gramatura do produto
             'size': item.product.size,  # Formato do produto (ex.: "66x96")
             'quantity_per_package': item.product.quantity_per_package,  # Quantidade por pack
-            'category': item.product.category.name,
+            # 'category': item.product.category.name,
         },
         'quantity': item.quantity,
         'price': item.price,

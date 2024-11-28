@@ -62,6 +62,8 @@
             const tableBody = document.querySelector("#product-table tbody");
             tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
 
+            let modals = ""; // Declare modals antes do loop
+
             const start = (currentPage - 1) * rowsPerPage;
             const end = start + rowsPerPage;
             const pageData = products.slice(start, end);
@@ -74,11 +76,41 @@
                         <td>${product.weight} ${product.unit_type}</td>
                         <td>${product.size}</td>
                         <td>${product.quantity_per_package}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#productModal${product.id}">
+                                Delete
+                            </button>
+                        </td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML("beforeend", row);
+
+                // Armazena o modal para renderizar após o loop
+                modals += `
+                    <div class="modal fade" id="productModal${product.id}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="deleteModalLabel">Deletar Produto</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Tem certeza de que deseja deletar o produto <strong>${product.name}</strong>? Esta ação não pode ser desfeita.
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-danger" onclick="deleteProduct(${product.id})">Deletar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             });
+
+            // Insira os modais no final do body
+            document.querySelector("body").insertAdjacentHTML("beforeend", modals);
         }
+
 
         // Função para renderizar os botões de paginação
         function renderPagination() {
@@ -123,6 +155,49 @@
                     }
                 });
             });
+        }
+
+        window.deleteProduct = async function (productId) {
+            const url = `/api/products/${productId}/delete/`;
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"), // CSRF Token
+                    },
+                });
+
+                if (response.ok) {
+                    // alert("Produto deletado com sucesso!");
+                    document.querySelector(`#productModal${productId}`).querySelector(".btn-close").click();
+                    fetchCustomers(); // Atualiza a tabela de produtos
+                } else {
+                    const errorData = await response.json();
+                    console.error("Erro ao deletar o produto:", errorData);
+                    alert("Erro ao deletar o produto.");
+                }
+            } catch (error) {
+                console.error("Erro ao enviar requisição:", error);
+                alert("Erro ao enviar requisição.");
+            }
+        };
+
+        // Função utilitária para buscar o CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + "=")) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
 
         // Inicializa a tabela
