@@ -121,7 +121,9 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <form id="editStockForm${stock.id}">
                                     <label class="form-label">Quantidade</label>
                                     <input type="number" class="form-control" name="quantity" value="${stock.quantity}">
-                                </form>
+                                    <label class="form-label">Preço</label>
+                                    <input type="number" class="form-control" name="price" value="${stock.price}">
+                                    </form>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -195,6 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 method: "POST",
                 body: JSON.stringify({
                     quantity: formData.get("quantity"),
+                    price: formData.get("price"),
                 }),
                 headers: {
                     "Content-Type": "application/json",

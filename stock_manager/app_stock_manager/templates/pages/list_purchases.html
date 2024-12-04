@@ -3,24 +3,24 @@
 <div class="container mt-3">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Lista de produtos</span>
+            <span>Todas as Compras</span>
             <span class="d-flex justify-content-between align-items-center">
                 <div class="input-group">
                     <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
                     <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
                 </div>
-                <a href="{% url 'new_product' %}" class="btn btn-primary btn-sm ms-3">Novo</a>
+                <a href="{% url 'new_purchase' %}" class="btn btn-primary btn-sm ms-3">Novo</a>
             </span>
         </div>        
         <div class="card-body">
-            <table class="table table-bordered table-striped" id="product-table">
+            <table class="table table-bordered table-striped" id="purchase-table">
                 <thead class="table">
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>
-                        <th>Gramas</th>
-                        <th>Formato</th>
-                        <th>Quat. p/ Pacote</th>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th>Valor Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,17 +39,17 @@
 </div>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const apiUrl = "/api/products/";
+        const apiUrl = "/api/purchases/";
         const rowsPerPage = 20;
         let currentPage = 1;
-        let products = [];
+        let purchases = [];
 
         // Função para buscar dados da API
         async function fetchCustomers() {
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
-                products = data.products || [];
+                purchases = data.purchases || [];
                 renderTable();
                 renderPagination();
             } catch (error) {
@@ -59,62 +59,79 @@
 
         // Função para renderizar a tabela
         function renderTable() {
-            const tableBody = document.querySelector("#product-table tbody");
-            tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+    const tableBody = document.querySelector("#purchase-table tbody");
+    tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
 
-            let modals = ""; // Declare modals antes do loop
+    let modals = ""; // Declara modals antes do loop
 
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageData = products.slice(start, end);
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const pageData = purchases.slice(start, end);
 
-            pageData.forEach((product, index) => {
-                const row = `
-                    <tr>
-                        <td>${start + index + 1}</td>
-                        <td>${product.name}</td>
-                        <td>${product.weight} ${product.unit_type}</td>
-                        <td>${product.size}</td>
-                        <td>${product.quantity_per_package}</td>
-                        <td>
-                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#productModal${product.id}">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tableBody.insertAdjacentHTML("beforeend", row);
+    pageData.forEach((purchase, index) => {
+        const row = `
+            <tr>
+                <td>${start + index + 1}</td>
+                <td>${purchase.purchase_name}</td>
+                <td>${purchase.supplier_name}</td>
+                <td>${new Date(purchase.purchase_created).toLocaleString()}</td>
+                <td>R$${purchase.full_price.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal${purchase.purchase_id}">
+                        Detalhes
+                    </button>
+                </td>
+            </tr>
+        `;
+        tableBody.insertAdjacentHTML("beforeend", row);
 
-                // Armazena o modal para renderizar após o loop
-                modals += `
-                    <div class="modal fade" id="productModal${product.id}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="deleteModalLabel">Deletar Produto</h1>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    Tem certeza de que deseja deletar o produto <strong>${product.name}</strong>? </br>Esta ação irá remover o produto e todas as sua transações e não pode ser desfeita.
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="button" class="btn btn-danger" onclick="deleteProduct(${product.id})">Deletar</button>
-                                </div>
-                            </div>
+        // Cria a lista de produtos
+        const productList = purchase.products
+            .map(product => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${product.product_name}
+                    <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
+                </li>
+            `)
+            .join("");
+
+        // Armazena o modal para renderizar após o loop
+        modals += `
+            <div class="modal fade" id="purchaseModal${purchase.purchase_id}" tabindex="-1" aria-labelledby="detailsModalLabel${purchase.purchase_id}" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="detailsModalLabel${purchase.purchase_id}">Detalhes da Venda</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <h5>Cliente: ${purchase.customer_name}</h5>
+                            <h5>Data: ${new Date(purchase.purchase_created).toLocaleString()}</h5>
+                            <h5>Valor Total: R$${purchase.full_price.toFixed(2)}</h5>
+                            <hr>
+                            <h6>Produtos:</h6>
+                            <ul class="list-group">
+                                ${productList}
+                            </ul>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                         </div>
                     </div>
-                `;
-            });
+                </div>
+            </div>
+        `;
+    });
 
-            // Insira os modais no final do body
-            document.querySelector("body").insertAdjacentHTML("beforeend", modals);
-        }
+    // Insira os modais no final do body
+    document.querySelector("body").insertAdjacentHTML("beforeend", modals);
+}
+
 
 
         // Função para renderizar os botões de paginação
         function renderPagination() {
-            const totalPages = Math.ceil(products.length / rowsPerPage);
+            const totalPages = Math.ceil(purchases.length / rowsPerPage);
             const pagination = document.querySelector("#pagination");
             pagination.innerHTML = ""; // Limpa os botões antes de renderizar
 
@@ -157,8 +174,8 @@
             });
         }
 
-        window.deleteProduct = async function (productId) {
-            const url = `/api/products/${productId}/delete/`;
+        window.deleteProduct = async function (purchaseId) {
+            const url = `/api/purchases/${purchaseId}/delete/`;
 
             try {
                 const response = await fetch(url, {
@@ -171,7 +188,7 @@
 
                 if (response.ok) {
                     // alert("Produto deletado com sucesso!");
-                    document.querySelector(`#productModal${productId}`).querySelector(".btn-close").click();
+                    document.querySelector(`#purchaseModal${purchaseId}`).querySelector(".btn-close").click();
                     fetchCustomers(); // Atualiza a tabela de produtos
                 } else {
                     const errorData = await response.json();

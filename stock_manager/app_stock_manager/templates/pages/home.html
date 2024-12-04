@@ -1,6 +1,194 @@
-{% extends 'base.html' %}
+{% extends 'base2.html' %}
 {% block content %}
-<div class="container">
-    <h1>Hello World</h1>
+<div class="container mt-4">
+    <!-- Resumo: Cards com métricas -->
+     <div class="row">
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_stocks' %}">Estoque</a>
+        </div>
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_sales' %}">Vendas</a>
+        </div>
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_customers' %}">Clientes</a>
+        </div>
+     </div>
+     <div class="row">
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_products' %}">Produtos</a>
+        </div>
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_purchases' %}">Compras</a>
+        </div>
+        <div class="d-grid gap-2 col-4">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_suppliers' %}">Fornecedores</a>
+        </div>
+     </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Resumo Diário</div>
+                <div class="card-body">
+                    <h5 class="card-title">Vendas: R$ <span id="dailySalesTotal">0.00</span></h5>
+                    <p class="card-text">Produtos Vendidos: <span id="dailySoldProducts">0</span></p>
+                    <p class="card-text">Compras: R$ <span id="dailyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Produtos Comprados: <span id="dailyPurchasedProducts">0</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Resumo Semanal</div>
+                <div class="card-body">
+                    <h5 class="card-title">Vendas: R$ <span id="weeklySalesTotal">0.00</span></h5>
+                    <p class="card-text">Produtos Vendidos: <span id="weeklySoldProducts">0</span></p>
+                    <p class="card-text">Compras: R$ <span id="weeklyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Produtos Comprados: <span id="weeklyPurchasedProducts">0</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Resumo Mensal</div>
+                <div class="card-body">
+                    <h5 class="card-title">Vendas: R$ <span id="monthlySalesTotal">0.00</span></h5>
+                    <p class="card-text">Produtos Vendidos: <span id="monthlySoldProducts">0</span></p>
+                    <p class="card-text">Compras: R$ <span id="monthlyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Produtos Comprados: <span id="monthlyPurchasedProducts">0</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabelas -->
+    <div class="row">
+        <!-- Últimas 10 Vendas -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Últimas 10 Vendas</div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Venda</th>
+                                <th>Cliente</th>
+                                <th>Data</th>
+                                <th>Total (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="latestSales">
+                            <!-- Dados inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimas 10 Compras -->
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Últimas 10 Compras</div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Compra</th>
+                                <th>Fornecedor</th>
+                                <th>Data</th>
+                                <th>Total (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="latestPurchases">
+                            <!-- Dados inseridos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+    const summaryUrl = "/api/summary/";
+    const latestSaleDataUrl = "/api/sales/latest/";
+    const latestPurchaseDataUrl = "/api/purchases/latest/";
+
+    // Função para buscar o resumo
+    async function fetchSummary() {
+        try {
+            const response = await fetch(summaryUrl);
+            const data = await response.json();
+
+            // Garantir que os valores são números e atualizar os elementos do DOM
+            document.querySelector("#dailySalesTotal").textContent = `R$ ${Number(data.daily.sales_total).toFixed(2)}`;
+            document.querySelector("#dailySoldProducts").textContent = `${Number(data.daily.products_sold)}`;
+            document.querySelector("#dailyPurchasesTotal").textContent = `R$ ${Number(data.daily.purchases_total).toFixed(2)}`;
+            document.querySelector("#dailyPurchasedProducts").textContent = `${Number(data.daily.products_purchased) || 0}`;
+            
+            document.querySelector("#weeklySalesTotal").textContent = `R$ ${Number(data.weekly.sales_total).toFixed(2)}`;
+            document.querySelector("#weeklySoldProducts").textContent = `${Number(data.weekly.products_sold)}`;
+            document.querySelector("#weeklyPurchasesTotal").textContent = `R$ ${Number(data.weekly.purchases_total).toFixed(2)}`;
+            document.querySelector("#weeklyPurchasedProducts").textContent = `${Number(data.weekly.products_purchased) || 0}`;
+            
+            document.querySelector("#monthlySalesTotal").textContent = `R$ ${Number(data.monthly.sales_total).toFixed(2)}`;
+            document.querySelector("#monthlySoldProducts").textContent = `${Number(data.monthly.products_sold)}`;
+            document.querySelector("#monthlyPurchasesTotal").textContent = `R$ ${Number(data.monthly.purchases_total).toFixed(2)}`;
+            document.querySelector("#monthlyPurchasedProducts").textContent = `${Number(data.monthly.products_purchased) || 0}`;
+        } catch (error) {
+            console.error("Erro ao buscar resumo:", error);
+        }
+    }
+
+    // Função para buscar dados mais recentes
+    async function fetchLatestData() {
+    try {
+        const responseSale = await fetch(latestSaleDataUrl);
+        const responsePurchase = await fetch(latestPurchaseDataUrl);
+
+        if (!responseSale.ok || !responsePurchase.ok) {
+            throw new Error("Erro ao buscar os dados mais recentes.");
+        }
+
+        const dataSale = await responseSale.json();
+        const dataPurchase = await responsePurchase.json();
+
+        // Função para formatar a data
+        const formatDate = (isoString) => {
+            const date = new Date(isoString);
+            return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" });
+        };
+
+        // Renderizar as últimas vendas
+        const salesTableBody = document.querySelector("#latestSales");
+        salesTableBody.innerHTML = (dataSale.sales || []).map((sale) => `
+            <tr>
+                <td>${sale.sale_name || "N/A"}</td>
+                <td>${sale.customer_name || "N/A"}</td>
+                <td>${sale.sale_created ? formatDate(sale.sale_created) : "N/A"}</td>
+                <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
+            </tr>
+        `).join("");
+
+        // Renderizar as últimas compras
+        const purchasesTableBody = document.querySelector("#latestPurchases");
+        purchasesTableBody.innerHTML = (dataPurchase.purchases || []).map((purchase) => `
+            <tr>
+                <td>${purchase.purchase_name || "N/A"}</td>
+                <td>${purchase.supplier_name || "N/A"}</td>
+                <td>${purchase.purchase_created ? formatDate(purchase.purchase_created) : "N/A"}</td>
+                <td>R$ ${Number(purchase.full_price || 0).toFixed(2)}</td>
+            </tr>
+        `).join("");
+    } catch (error) {
+        console.error("Erro ao buscar dados mais recentes:", error);
+    }
+}
+
+
+    // Executar as funções ao carregar a página
+    await fetchSummary();
+    await fetchLatestData();
+});
+</script>
 {% endblock %}

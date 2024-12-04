@@ -75,11 +75,20 @@ class Stock(models.Model):
 
 
 class Sale(models.Model):
+    PAYMENT_TYPES = [
+        ('AV', 'À Vista'),
+        ('CR', 'Crédito'),
+        ('BO', 'Boleto'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sales")
     name = models.CharField(max_length=255)
+    nfe = models.CharField(max_length=255, default='')
     created = models.DateTimeField(auto_now_add=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="sales")
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
+    observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Sale {self.id} - {self.name}"
@@ -95,6 +104,15 @@ class SaleProduct(models.Model):
         return f"{self.product.name} - {self.quantity}"
 
 
+class Boleto(models.Model):
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="boletos")
+    due_date = models.DateField()  # Data de vencimento
+    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Valor do boleto
+    is_paid = models.BooleanField(default=False)  # Status de pagamento
+
+    def __str__(self):
+        return f"Boleto {self.id} - R$ {self.amount} - {'Pago' if self.is_paid else 'Pendente'}"
+
 class Purchase(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="purchases")
     name = models.CharField(max_length=255)
@@ -102,6 +120,7 @@ class Purchase(models.Model):
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name="purchases")
     invoice_number = models.CharField(max_length=50)
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
+    observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Purchase {self.id} - {self.name}"

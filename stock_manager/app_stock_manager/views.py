@@ -1,8 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import Customer, Product, Stock, Supplier, Category
+from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProduct, Purchase, PurchaseProduct, Boleto
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import json
+from decimal import Decimal
+from django.db import transaction
+from django.db.models import Sum, Count, Min
+from django.utils.timezone import now, timedelta
+from django.contrib.auth.decorators import login_required
+
+
 
 def home(request):
     return render(request, 'pages/home.html')
@@ -30,6 +38,20 @@ def new_product(request):
 
 def view_stocks(request):
     return render(request, 'pages/list_stock.html')
+
+def view_sales(request):
+    return render(request, 'pages/list_sales.html')
+
+def new_sale(request):
+    return render(request, 'pages/new_sale.html')
+
+def view_purchases(request):
+    return render(request, 'pages/list_purchases.html')
+
+def new_purchase(request):
+    return render(request, 'pages/new_purchase.html')
+
+
 
 # ======================= FUNCIONS ============================================
 def add_category(request):
@@ -157,6 +179,162 @@ def add_product(request):
     # Se o método não for POST
     return JsonResponse({"error": "Método não permitido."}, status=405)
     
+@login_required
+@csrf_exempt
+def add_sale(request):
+    if request.method == "POST":
+        try:
+            # Verificar se o usuário está autenticado (para APIs que não usam sessões, pode ser via token)
+            if not request.user.is_authenticated:
+                return JsonResponse({"success": False, "error": "Usuário não autenticado"}, status=401)
+
+            # Carregar os dados do corpo da requisição
+            data = json.loads(request.body)
+            customer_id = data.get("customer")
+
+            # Valida se o cliente existe
+            customer = get_object_or_404(Customer, id=customer_id)
+
+            # Inicializa variáveis
+            sale_name = data.get("name", "")
+            observations = data.get("observations", "")
+            payment_type = data.get("payment_type", "")
+            products = data.get("products", [])
+
+            # Calcula o preço total
+            total_price = Decimal(0.00)  # Inicializa como Decimal
+            for product_data in products:
+                product = get_object_or_404(Product, id=product_data["id"])
+
+                # Verifica se o produto tem estoque e pega o preço
+                stock = product.stocks.first()
+                if not stock:
+                    return JsonResponse({"success": False, "error": f"Produto {product.name} sem estoque."}, status=400)
+                
+                stock_price = Decimal(stock.price)  # Converte para Decimal
+                quantity = Decimal(product_data["quantity"])  # Converte para Decimal
+                total_price += stock_price * quantity  # Atualiza o preço total com Decimal
+
+            # Verifica se campos obrigatórios estão presentes
+            required_fields = ["name", "customer", "payment_type", "products"]
+            missing_fields = [field for field in required_fields if field not in data or not data[field]]
+
+            if missing_fields:
+                return JsonResponse(
+                    {"success": False, "error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"},
+                    status=400,
+                )
+
+            # Criação da venda
+            sale = Sale.objects.create(
+                user=request.user,  # Associa o usuário logado à venda
+                name=sale_name,
+                customer=customer,
+                observations=observations,
+                payment_type=payment_type,
+                full_price=total_price,  # Salva o preço total como Decimal
+            )
+
+            # Adicionar produtos à venda
+            for product_data in products:
+                product = get_object_or_404(Product, id=product_data["id"])
+                stock = product.stocks.first()
+                if not stock:
+                    continue  # Se o produto não tem estoque, não adiciona
+
+                stock_price = Decimal(stock.price)  # Converte para Decimal
+                quantity = Decimal(product_data["quantity"])  # Converte para Decimal
+
+                SaleProduct.objects.create(
+                    sale=sale,
+                    product=product,
+                    quantity=quantity,
+                    price=stock_price,  # Salva o preço unitário
+                )
+
+            # Adicionar boletos (se aplicável)
+            if payment_type == "Boleto":
+                installments = data.get("installments", [])
+                for installment in installments:
+                    installment_value = Decimal(installment["value"])  # Converte para Decimal
+                    Boleto.objects.create(
+                        sale=sale,
+                        value=installment_value,
+                        due_date=installment["due_date"],
+                        status="Pendente",
+                    )
+
+            return JsonResponse({"success": True, "sale_id": sale.id})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+    return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+
+
+
+@csrf_exempt
+def add_purchase(request):
+    if request.method == "POST":
+        try:
+            # Parse os dados JSON enviados
+            data = json.loads(request.body)
+
+            # Captura e valida o fornecedor (supplier)
+            supplier_id = data.get("supplier")
+            supplier = get_object_or_404(Supplier, id=supplier_id)
+
+            # Captura o usuário (ajuste conforme sua lógica de autenticação)
+            user = request.user
+
+            # Inicializa o valor total da compra
+            full_price = Decimal(0.00)
+
+            # Cria a compra dentro de uma transação
+            with transaction.atomic():
+                purchase = Purchase.objects.create(
+                    user=user,
+                    name=data.get("name"),
+                    supplier=supplier,
+                    observations=data.get("observations", ""),
+                    full_price=full_price  # Atualizaremos depois de calcular o preço total
+                )
+
+                # Processa os produtos
+                products = data.get("products", [])
+                for item in products:
+                    product = get_object_or_404(Product, id=item.get("id"))
+                    quantity = Decimal(item.get("quantity", 1))
+
+                    # Verifica o preço do produto no estoque
+                    stock, created = Stock.objects.get_or_create(product=product)
+
+                    # Atualiza o estoque (incrementa a quantidade)
+                    stock.quantity += quantity
+                    stock.save()
+
+                    # Calcula o total do item
+                    item_total = stock.price * quantity
+                    full_price += item_total
+
+                    # Cria o PurchaseProduct
+                    PurchaseProduct.objects.create(
+                        purchase=purchase,
+                        product=product,
+                        quantity=quantity,
+                        price=stock.price
+                    )
+
+                # Atualiza o preço total da compra
+                purchase.full_price = full_price
+                purchase.save()
+
+            # Retorna resposta de sucesso
+            return JsonResponse({"success": True, "message": "Compra registrada com sucesso!"}, status=201)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "message": "Método não permitido."}, status=405)
+
 @csrf_exempt
 def update_stock(request, stock_id):
     if request.method == "POST":
@@ -168,6 +346,11 @@ def update_stock(request, stock_id):
             new_quantity = data.get("quantity")
             if new_quantity is not None:
                 stock.quantity = new_quantity
+                stock.save()
+            # Atualiza o preço 
+            new_price = data.get("price")
+            if new_price is not None:
+                stock.price = new_price
                 stock.save()
 
             return JsonResponse({"success": True, "message": "Estoque atualizado com sucesso."})
@@ -245,6 +428,33 @@ def get_all_products(request):
 
     return JsonResponse({'products': product_list})
 
+def api_products(request):
+    query = request.GET.get('search', '')
+
+    if query:
+        products = Product.objects.filter(name__icontains=query)
+    else:
+        products = Product.objects.all()
+
+    # Adicionando o menor preço do estoque relacionado
+    products_with_price = products.annotate(min_price=Min('stocks__price'))
+
+    data = {
+        "products": [
+            {
+                "id": product.id,
+                "name": product.name,
+                "weight": product.weight,
+                "unit_type": product.unit_type,
+                "size": product.size,
+                "quantity_per_package": product.quantity_per_package,
+                "price": product.min_price if product.min_price is not None else 0  # Garantindo que o preço não seja nulo
+            }
+            for product in products_with_price
+        ]
+    }
+    return JsonResponse(data)
+
 def get_unit_types(request):
     unit_types = [{"value": key, "label": value} for key, value in dict(Product.UNIT_CHOICES).items()]
     return JsonResponse({"unit_types": unit_types})
@@ -267,3 +477,122 @@ def get_all_stocks(request):
     } for item in stock_items]
 
     return JsonResponse({'stock': stock_list})
+
+def get_all_sales(request):
+    sales = Sale.objects.all()
+    sale_list = []
+
+    for sale in sales:
+        sale_products = [
+            {
+                "product_id": sale_product.product.id,
+                "product_name": sale_product.product.name,
+                "quantity": float(sale_product.quantity),
+                "price": float(sale_product.price),
+                "total_price": float(sale_product.quantity * sale_product.price),
+            }
+            for sale_product in sale.sale_products.all()
+        ]
+
+        sale_list.append({
+            "sale_id": sale.id,
+            "sale_name": sale.name,
+            "sale_created": sale.created,
+            "customer_name": sale.customer.name,
+            "full_price": float(sale.full_price),
+            "products": sale_products,
+        })
+
+    return JsonResponse({"sales": sale_list})
+
+def get_all_purchases(request):
+    purchases = Purchase.objects.all()
+    purchase_list = []
+
+    for purchase in purchases:
+        purchase_products = [
+            {
+                "product_id": purchase_product.product.id,
+                "product_name": purchase_product.product.name,
+                "quantity": float(purchase_product.quantity),
+                "price": float(purchase_product.price),
+                "total_price": float(purchase_product.quantity * purchase_product.price),
+            }
+            for purchase_product in purchase.purchase_products.all()
+        ]
+
+        purchase_list.append({
+            "purchase_id": purchase.id,
+            "purchase_name": purchase.name,
+            "purchase_created": purchase.created,
+            "supplier_name": purchase.supplier.name,
+            "full_price": float(purchase.full_price),
+            "products": purchase_products,
+        })
+
+    return JsonResponse({"purchases": purchase_list})
+
+def get_summary(request):
+    today = now().date()
+    start_of_week = today - timedelta(days=today.weekday())
+    start_of_month = today.replace(day=1)
+
+    # Filtros para vendas e compras
+    daily_sales = Sale.objects.filter(created__date=today)
+    daily_purchases = Purchase.objects.filter(created__date=today)
+    weekly_sales = Sale.objects.filter(created__date__gte=start_of_week)
+    weekly_purchases = Purchase.objects.filter(created__date__gte=start_of_week)
+    monthly_sales = Sale.objects.filter(created__date__gte=start_of_month)
+    monthly_purchases = Purchase.objects.filter(created__date__gte=start_of_month)
+
+    # Função auxiliar para calcular resumo
+    def calculate_summary(sales, purchases):
+        sales_products = SaleProduct.objects.filter(sale__in=sales)
+        purchases_products = PurchaseProduct.objects.filter(purchase__in=purchases)
+
+        return {
+            'sales_total': sales.aggregate(total=Sum('full_price'))['total'] or 0,
+            'products_sold': sales_products.aggregate(total=Sum('quantity'))['total'] or 0,
+            'purchases_total': purchases.aggregate(total=Sum('full_price'))['total'] or 0,
+            'products_purchased': purchases_products.aggregate(total=Sum('quantity'))['total'] or 0,
+        }
+
+    # Resumo diário, semanal e mensal
+    data = {
+        'daily': calculate_summary(daily_sales, daily_purchases),
+        'weekly': calculate_summary(weekly_sales, weekly_purchases),
+        'monthly': calculate_summary(monthly_sales, monthly_purchases),
+    }
+
+    return JsonResponse(data)
+
+def get_latest_sales(request):
+    sales = Sale.objects.order_by('-created')[:10]
+    data = {
+        'sales': [
+            {
+                'sale_name': sale.name,
+                'customer_name': sale.customer.name,
+                'sale_created': sale.created,
+                'full_price': sale.full_price,
+            }
+            for sale in sales
+        ]
+    }
+    return JsonResponse(data)
+
+def get_latest_purchases(request):
+    purchases = Purchase.objects.order_by('-created')[:10]
+    data = {
+        'purchases': [
+            {
+                'purchase_name': purchase.name,
+                'supplier_name': purchase.supplier.name,
+                'purchase_created': purchase.created,
+                'full_price': purchase.full_price,
+            }
+            for purchase in purchases
+        ]
+    }
+    return JsonResponse(data)
+

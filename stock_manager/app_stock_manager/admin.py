@@ -9,6 +9,7 @@ from .models import (
     SaleProduct,
     Purchase,
     PurchaseProduct,
+    Boleto,
 )
 
 @admin.register(Category)
@@ -60,6 +61,9 @@ class SaleProductAdmin(admin.ModelAdmin):
     search_fields = ("sale__name", "product__name")
     ordering = ("id",)
 
+@admin.register(Boleto)
+class BoletoAdmin(admin.ModelAdmin):
+    list_display = ("id", "sale", "due_date", "amount", "is_paid")
 
 @admin.register(Purchase)
 class PurchaseAdmin(admin.ModelAdmin):
