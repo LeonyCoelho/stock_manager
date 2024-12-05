@@ -106,12 +106,13 @@ class SaleProduct(models.Model):
 
 class Boleto(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="boletos")
-    due_date = models.DateField()  # Data de vencimento
-    amount = models.DecimalField(max_digits=10, decimal_places=2)  # Valor do boleto
-    is_paid = models.BooleanField(default=False)  # Status de pagamento
+    value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    due_date = models.DateField()
+    status = models.CharField(max_length=20, default="Pendente", choices=[("Pendente", "Pendente"), ("Pago", "Pago")])
 
     def __str__(self):
-        return f"Boleto {self.id} - R$ {self.amount} - {'Pago' if self.is_paid else 'Pendente'}"
+        return f"Boleto {self.id} - {self.status}"
+
 
 class Purchase(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="purchases")

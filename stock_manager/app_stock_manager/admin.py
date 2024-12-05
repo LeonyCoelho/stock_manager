@@ -63,7 +63,7 @@ class SaleProductAdmin(admin.ModelAdmin):
 
 @admin.register(Boleto)
 class BoletoAdmin(admin.ModelAdmin):
-    list_display = ("id", "sale", "due_date", "amount", "is_paid")
+    list_display = ("id", "sale", "due_date", "value", "status")
 
 @admin.register(Purchase)
 class PurchaseAdmin(admin.ModelAdmin):

@@ -253,7 +253,8 @@ def add_sale(request):
                 )
 
             # Adicionar boletos (se aplicável)
-            if payment_type == "Boleto":
+            if payment_type == "BO":
+                print("Boleto")
                 installments = data.get("installments", [])
                 for installment in installments:
                     installment_value = Decimal(installment["value"])  # Converte para Decimal
