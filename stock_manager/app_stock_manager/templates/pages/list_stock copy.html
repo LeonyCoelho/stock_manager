@@ -9,6 +9,7 @@
                     <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
                     <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
                 </div>
+                <!-- <a href="{% url 'new_product' %}" class="btn btn-primary btn-sm ms-3">Novo</a> -->
             </span>
         </div>
 
@@ -19,7 +20,7 @@
                         <th>ID</th>
                         <th>Nome</th>
                         <th>Quantidade</th>
-                        <th>Preço Unitário</th>
+                        <th>Preço Unitario</th>
                         <th>Preço por KG</th>
                         <th>Preço Total</th>
                         <th>Peso do Pacote (kg)</th>
@@ -44,17 +45,17 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     
-    const apiUrl = "/api/stocks/";  // URL da API que traz os dados calculados
-    const rowsPerPage = 20;  // Número de linhas por página
-    let currentPage = 1;  // Página atual
-    let stockData = [];  // Dados do estoque
+    const apiUrl = "/api/stocks/";
+    const rowsPerPage = 20;
+    let currentPage = 1;
+    let stockData = [];
 
     // Função para buscar dados da API
     async function fetchStock() {
         try {
             const response = await fetch(apiUrl);
             const data = await response.json();
-            stockData = data.stock || [];  // Corrige o nome da propriedade
+            stockData = data.stock || []; // Corrige o nome da propriedade
             renderTable();
             renderPagination();
         } catch (error) {
@@ -62,35 +63,44 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Função para renderizar a tabela com os dados da API
+    // Função para calcular o peso do pacote
+    function calculatePackageWeight(weight, size, quantity_per_package) {
+        const [largura, altura] = size.split("x").map(dim => parseFloat(dim) / 100); // Converte para metros
+        const area = largura * altura; // Área em m²
+        const pesoPacoteGramas = weight * area * quantity_per_package; // Peso do pacote em gramas
+        return (pesoPacoteGramas / 1000).toFixed(2); // Peso em kg
+    }
+
+    // Função para renderizar a tabela
     function renderTable() {
         const tableBody = document.querySelector("#stock-table tbody");
-        tableBody.innerHTML = "";  // Limpa a tabela antes de renderizar
+        tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
 
         const start = (currentPage - 1) * rowsPerPage;
         const end = start + rowsPerPage;
         const pageData = stockData.slice(start, end);
 
-        let modals = "";  // Acumula os modais fora do loop
+        let modals = ""; // Acumula os modais fora do loop
 
         pageData.forEach((stock, index) => {
-            // Garantir que os valores sejam números antes de usá-los
-            const price = parseFloat(stock.price) || 0;  // Converte para número, caso não seja
-            const precoPorKg = parseFloat(stock.preco_por_kg) || 0;  // Converte para número, caso não seja
-            const pesoPorPacote = parseFloat(stock.peso_por_pacote) || 0;  // Converte para número, caso não seja
-            const pesoTotal = parseFloat(stock.peso_total) || 0;  // Converte para número, caso não seja
-            const precoTotal = parseFloat(stock.preco_total) || 0;  // Converte para número, caso não seja
+            const weight = stock.product.weight || 0; // Gramatura do produto
+            const size = stock.product.size || "0x0"; // Formato do produto
+            const quantity_per_package = parseInt(stock.product.quantity_per_package, 10) || 0; // Folhas por pacote
+
+            const pesoPacote = calculatePackageWeight(weight, size, quantity_per_package);
+            const pesoTotal = (pesoPacote * stock.quantity).toFixed(2); // Multiplica pelo número de pacotes
+            const precoPorKilo = (stock.price / pesoPacote).toFixed(2); // Preço por quilo
 
             const row = `
                 <tr>
                     <td>${start + index + 1}</td>
                     <td>${stock.product.name}</td>
                     <td>${stock.quantity}</td>
-                    <td>R$ ${price.toFixed(2)}</td>  <!-- Preço Unitário -->
-                    <td>R$ ${precoPorKg.toFixed(2)}</td>  <!-- Preço por KG -->
-                    <td>R$ ${precoTotal.toFixed(2)}</td>  <!-- Preço Total -->
-                    <td>${pesoPorPacote.toFixed(2)} kg</td>  <!-- Peso do Pacote -->
-                    <td>${pesoTotal.toFixed(2)} kg</td>  <!-- Peso Total -->
+                    <td>R$${stock.price}</td>
+                    <td>R$${precoPorKilo}</td>
+                    <td>R$${(stock.quantity * stock.price).toFixed(2)}</td>
+                    <td>${pesoPacote} kg</td>
+                    <td>${pesoTotal} kg</td>
                     <td><button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#stockModal${stock.id}">edit</button></td>
                 </tr>
             `;
@@ -133,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function renderPagination() {
         const totalPages = Math.ceil(stockData.length / rowsPerPage);
         const pagination = document.querySelector("#pagination");
-        pagination.innerHTML = "";  // Limpa os botões antes de renderizar
+        pagination.innerHTML = ""; // Limpa os botões antes de renderizar
 
         // Botão "Anterior"
         pagination.insertAdjacentHTML(
@@ -176,7 +186,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Inicializa a tabela
     fetchStock();
-
+    
     window.updateStock = async function (stockId) {
         const form = document.querySelector(`#editStockForm${stockId}`);
         const formData = new FormData(form);
@@ -228,6 +238,5 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 </script>
-
 
 {% endblock %}

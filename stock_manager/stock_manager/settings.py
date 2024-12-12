@@ -40,6 +40,10 @@ INSTALLED_APPS = [
     'app_stock_manager'
 ]
 
+# Configura o redirecionamento após login
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login/"  # Após logout, redireciona para a página de login
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

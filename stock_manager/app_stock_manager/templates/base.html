@@ -49,8 +49,8 @@
                   <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{% url 'settings' %}">Sistema</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#">Perfil</a></li>
-                    <li><a class="dropdown-item" href="#">Sair</a></li>
+                    <li><a class="dropdown-item" href="{% url 'change_password' %}">Perfil</a></li>
+                    <li><a class="dropdown-item" href="{% url 'logout' %}">Sair</a></li>
                   </ul>
                 </li>
               </ul>
@@ -65,7 +65,7 @@
     </main>
     <footer class="footer mt-auto py-3 bg-light">
       <div class="container">
-        <span class="text-muted">Stock Manager - Beta 0.8 - 2024 - Desenvolvido por Leony Coelho</span>
+        <span class="text-muted">Stock Manager &copy; - Beta 0.8 - 2024 - Desenvolvido por Leony Coelho</span>
       </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

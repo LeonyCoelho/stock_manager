@@ -1,7 +1,9 @@
 {% extends 'base2.html' %}
 {% block content %}
 <div class="container mt-4">
-    <!-- Resumo: Cards com métricas -->
+
+    <!-- ===================== BOTOES DE ACESSO ================================= -->
+
      <div class="row">
         <div class="d-grid gap-2 col-4">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_stocks' %}">Estoque</a>
@@ -24,6 +26,36 @@
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_suppliers' %}">Fornecedores</a>
         </div>
      </div>
+
+     <!-- ======================= BOLETOS PENDENTES ============================= -->
+
+     <div class="row">
+        <div class="col">
+            <div class="card mb-3">
+                <div class="card-header">Boletos Pendentes</div>
+                <div class="card-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Venda</th>
+                                <th>Data</th>
+                                <th>Boletos</th>
+                                <th>Pendente (R$)</th>
+                                <th>Total (R$)</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="boletosPendetes">
+                            <!-- Linhas serão adicionadas dinamicamente pelo JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+     <!-- ================== CARDS DE RESUMO ===================================== -->
+
     <div class="row">
         <div class="col-md-4">
             <div class="card text-white bg-success mb-3">
@@ -60,7 +92,7 @@
         </div>
     </div>
 
-    <!-- Tabelas -->
+    <!-- ==================== TABELAS DE ULTIMAS MOVIMENTACOES =================== -->
     <div class="row">
         <!-- Últimas 10 Vendas -->
         <div class="col-md-6">
@@ -106,6 +138,7 @@
             </div>
         </div>
     </div>
+
 </div>
 
 <script>
@@ -191,4 +224,482 @@ document.addEventListener("DOMContentLoaded", async function () {
     await fetchLatestData();
 });
 </script>
+<!-- <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const apiUrl = "/api/boletos-pendentes/";
+    const tableBody = document.querySelector("#boletosPendetes");
+
+    // Função para buscar os boletos pendentes
+    async function fetchBoletosPendentes() {
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            renderTable(data.boletos_pendentes);
+        } catch (error) {
+            console.error("Erro ao buscar boletos pendentes:", error);
+        }
+    }
+
+    // Função para renderizar a tabela
+    function renderTable(boletos) {
+    tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+    const modalContainer = document.createElement("div"); // Contêiner para armazenar os modais
+    modalContainer.id = "modalContainer";
+    modalContainer.innerHTML = ""; // Limpa os modais existentes
+
+    // Mapeia boletos por venda
+    const vendasMap = new Map();
+
+    boletos.forEach(boleto => {
+        const venda = boleto.venda;
+
+        // Verifica se a venda já foi adicionada ao mapa
+        if (!vendasMap.has(venda.venda_id)) {
+            vendasMap.set(venda.venda_id, {
+                nome: venda.nome,
+                data_venda: venda.data_venda,
+                valor_total: parseFloat(venda.valor_total.replace('R$', '').trim()) || 0,
+                total_boletos: 0,
+                boletos_pagos: 0,
+                total_pendente: 0,
+                boletos: [],
+                total_boletos_pendentes: 0,  // Novo campo para contar boletos pendentes
+                valor_total_pendentes: 0,    // Novo campo para somar o valor dos boletos pendentes
+            });
+        }
+
+        const vendaData = vendasMap.get(venda.venda_id);
+
+        // Atualiza os dados da venda
+        vendaData.boletos.push(boleto);
+        vendaData.total_boletos++;
+
+        // Se o boleto estiver pendente, atualiza os campos relacionados
+        if (boleto.valor && parseFloat(boleto.valor.replace('R$', '').trim()) > 0) {
+            vendaData.total_boletos_pendentes++;
+            vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace('R$', '').trim());
+        }
+
+        // Mantém o valor total
+        vendaData.valor_total = parseFloat(venda.valor_total.replace('R$', '').trim());
+    });
+
+    // Renderiza cada venda
+    vendasMap.forEach((vendaData, vendaId) => {
+        // Linha da tabela principal
+        const row = `
+            <tr>
+                <td>${vendaData.nome}</td>
+                <td>${vendaData.data_venda}</td>
+                <td>${vendaData.total_boletos_pendentes}/${vendaData.total_boletos}</td>
+                <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
+                <td>R$ ${vendaData.valor_total.toFixed(2)}</td>
+                <td>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
+                        Detalhes
+                    </button>
+                </td>
+            </tr>
+        `;
+        tableBody.innerHTML += row; // Adiciona a linha à tabela
+
+        // Modal da venda
+        const modal = `
+            <div class="modal fade" id="boletoModal${vendaId}" tabindex="-1" aria-labelledby="boletoModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="boletoModalLabel">${vendaData.nome}</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Vencimento</th>
+                                        <th>Valor</th>
+                                        <th>Status</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${vendaData.boletos.map(boleto => {
+                                        // Definindo o valor e o status para cada boleto
+                                        const valor = parseFloat(boleto.valor.replace('R$', '').trim()).toFixed(2);
+                                        const status = boleto.status || "Pendente"; // Aqui é necessário ter um campo `status` no boleto
+                                        
+                                        return `
+                                            <tr>
+                                                <td>${boleto.data_vencimento}</td>
+                                                <td>R$ ${valor}</td>
+                                                <td>${status}</td>
+                                                <td>
+                                                    <button type="button" class="btn btn-primary" onclick="openPaymentModal(${boleto.boleto_id})">Pagar</button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        modalContainer.insertAdjacentHTML("beforeend", modal);
+
+        // Adiciona o modal de confirmação de pagamento ao final do container
+        const paymentModal = `
+            <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h1 class="modal-title fs-5" id="confirmPaymentModalLabel">Confirmar Pagamento</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            Tem certeza de que deseja marcar este boleto como pago?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="confirmPaymentButton">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        modalContainer.insertAdjacentHTML("beforeend", paymentModal);
+        });
+
+        // Insere os modais no final do body
+        const existingModalContainer = document.getElementById("modalContainer");
+        if (existingModalContainer) {
+            existingModalContainer.replaceWith(modalContainer);
+        } else {
+            document.body.appendChild(modalContainer);
+        }
+    }
+
+
+
+    // Função para confirmar pagamento
+    async function confirmarPagamento(boletoId) {
+        try {
+            const url = `/api/boletos/${boletoId}/pagar/`;
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                }
+            });
+
+            if (response.ok) {
+                alert("Boleto pago com sucesso!");
+                fetchBoletosPendentes(); // Atualiza a tabela após o pagamento
+            } else {
+                alert("Erro ao pagar o boleto.");
+            }
+        } catch (error) {
+            console.error("Erro ao pagar o boleto:", error);
+        }
+    }
+
+    // Função utilitária para buscar o CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Inicializa a tabela
+    fetchBoletosPendentes();
+});
+
+
+</script> -->
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const apiUrl = "/api/boletos-pendentes/";
+    const tableBody = document.querySelector("#boletosPendetes");
+    let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado
+
+    // Função para buscar os boletos pendentes
+    async function fetchBoletosPendentes() {
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            renderTable(data.boletos_pendentes);
+        } catch (error) {
+            console.error("Erro ao buscar boletos pendentes:", error);
+        }
+    }
+
+    // Função para renderizar a tabela
+    function renderTable(boletos) {
+        tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+        const modalContainer = document.createElement("div"); // Contêiner para modais dinâmicos
+        modalContainer.id = "modalContainer";
+
+        const vendasMap = new Map();
+
+        boletos.forEach((boleto) => {
+            const venda = boleto.venda;
+
+            if (!vendasMap.has(venda.venda_id)) {
+                vendasMap.set(venda.venda_id, {
+                    nome: venda.nome,
+                    data_venda: venda.data_venda,
+                    valor_total: parseFloat(venda.valor_total.replace("R$", "").trim()) || 0,
+                    total_boletos: 0,
+                    total_boletos_pendentes: 0,
+                    valor_total_pendentes: 0,
+                    boletos: [],
+                });
+            }
+
+            const vendaData = vendasMap.get(venda.venda_id);
+            vendaData.boletos.push(boleto);
+            vendaData.total_boletos++;
+
+            if (boleto.valor && parseFloat(boleto.valor.replace("R$", "").trim()) > 0) {
+                vendaData.total_boletos_pendentes++;
+                vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace("R$", "").trim());
+            }
+        });
+
+        vendasMap.forEach((vendaData, vendaId) => {
+            const row = `
+                <tr>
+                    <td>${vendaData.nome}</td>
+                    <td>${vendaData.data_venda}</td>
+                    <td>${vendaData.total_boletos_pendentes}</td>
+                    <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
+                    <td>R$ ${vendaData.valor_total.toFixed(2)}</td>
+                    <td>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
+                            Detalhes
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+
+            const modal = `
+                <div class="modal fade" id="boletoModal${vendaId}" tabindex="-1" aria-labelledby="boletoModalLabel${vendaId}" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="boletoModalLabel${vendaId}">${vendaData.nome}</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Vencimento</th>
+                                            <th>Valor</th>
+                                            <th>Status</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${vendaData.boletos.map((boleto) => {
+                                            const valor = parseFloat(boleto.valor.replace("R$", "").trim()).toFixed(2);
+                                            const status = boleto.status || "Pendente";
+
+                                            return `
+                                                <tr>
+                                                    <td>${boleto.data_vencimento}</td>
+                                                    <td>R$ ${valor}</td>
+                                                    <td>${status}</td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-primary" onclick="openPaymentModal(${boleto.boleto_id})">Pagar</button>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join("")}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modalContainer.insertAdjacentHTML("beforeend", modal);
+        });
+
+        const existingModalContainer = document.getElementById("modalContainer");
+        if (existingModalContainer) {
+            existingModalContainer.replaceWith(modalContainer);
+        } else {
+            document.body.appendChild(modalContainer);
+        }
+    }
+
+    // Função para abrir o modal de pagamento
+    window.openPaymentModal = function (boletoId) {
+        boletoSelecionadoId = boletoId;
+
+        // Criar modal de confirmação se ainda não existir
+        let confirmModal = document.getElementById("confirmPaymentModal");
+        if (!confirmModal) {
+            const modalHtml = `
+                <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="confirmPaymentModalLabel">Confirmar Pagamento</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                Tem certeza de que deseja marcar este boleto como pago?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="confirmPaymentButton">Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML("beforeend", modalHtml);
+            confirmModal = document.getElementById("confirmPaymentModal");
+
+            // Adicionar evento ao botão de confirmação
+            confirmModal.querySelector("#confirmPaymentButton").addEventListener("click", () => {
+                if (!boletoSelecionadoId) return;
+
+                fetch(`/api/boletos/${boletoSelecionadoId}/pay/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                })
+                    .then((response) => {
+                        if (response.ok) {
+                            alert("Boleto pago com sucesso!");
+                            fetchBoletosPendentes(); // Atualiza a tabela
+
+                            // Fecha o modal de pagamento
+                            const bsConfirmModal = bootstrap.Modal.getInstance(confirmModal);
+                            bsConfirmModal.hide();
+
+                            // Fecha o modal da venda
+                            const activeVendaModal = document.querySelector(".modal.show");
+                            if (activeVendaModal) {
+                                const bsVendaModal = bootstrap.Modal.getInstance(activeVendaModal);
+                                bsVendaModal.hide();
+                            }
+
+                            // Remove qualquer backdrop restante
+                            const backdrops = document.querySelectorAll(".modal-backdrop");
+                            backdrops.forEach((backdrop) => backdrop.remove());
+                        } else {
+                            alert("Erro ao processar o pagamento.");
+                        }
+                    })
+                    .catch((error) => console.error("Erro ao processar pagamento:", error));
+            });
+
+        }
+
+        // Mostrar o modal de confirmação
+        const bsModal = new bootstrap.Modal(confirmModal);
+        bsModal.show();
+    };
+
+    // Função para obter o CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Inicializa a tabela
+    fetchBoletosPendentes();
+});
+
+    </script>
+    
+
+<!-- <script>
+    let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado
+
+function confirmarPagamento(boletoId) {
+    boletoSelecionadoId = boletoId; // Define o ID do boleto selecionado
+    const confirmarModal = new bootstrap.Modal(document.getElementById('confirmarPagamentoModal'));
+    confirmarModal.show();
+}
+
+// Evento para confirmar o pagamento
+document.getElementById('confirmarPagamentoBtn').addEventListener('click', () => {
+    if (!boletoSelecionadoId) return;
+
+    fetch(`/boletos/${boletoSelecionadoId}/pagar/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'), // Certifique-se de que o CSRF token está sendo enviado
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        } else {
+            throw new Error('Erro ao marcar o boleto como pago.');
+        }
+    })
+    .then(data => {
+        alert(data.message);
+        location.reload(); // Atualiza a página para refletir a alteração
+    })
+    .catch(error => {
+        alert('Erro: ' + error.message);
+    });
+});
+
+// Função para obter o CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+</script> -->
 {% endblock %}

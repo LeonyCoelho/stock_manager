@@ -4,56 +4,122 @@ from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProd
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
+import requests
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum, Count, Min
+from datetime import datetime
 from django.utils.timezone import now, timedelta
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout
+from django.contrib.auth import authenticate, login
+from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib.auth.views import PasswordChangeView
+from django.urls import reverse_lazy
+from django.contrib import messages
+
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
+
+import reportlab
+from reportlab.lib.pagesizes import letter, landscape, A4
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle, SimpleDocTemplate, Paragraph
+from textwrap import wrap
+from io import BytesIO
+from reportlab.lib.styles import getSampleStyleSheet
 
 
 
+def user_login(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect("home")  # Redireciona para a página inicial
+        else:
+            messages.error(request, "Nome de usuário ou senha incorretos.")
+    return render(request, "pages/login.html")
+
+class CustomPasswordChangeView(SuccessMessageMixin, PasswordChangeView):
+    template_name = 'pages/change_password.html'
+    success_url = reverse_lazy('home')
+    success_message = "Sua senha foi alterada com sucesso!"
+
+    def form_invalid(self, form):
+        # Adiciona mensagens de erro específicas do formulário
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, error)
+        return super().form_invalid(form)
+
+@login_required
 def home(request):
     return render(request, 'pages/home.html')
 
+@login_required
 def settings(request):
     return render(request, 'pages/settings.html')
 
+@login_required
 def view_customers(request):
     return render(request, 'pages/list_customers.html')
 
+@login_required
 def new_customer(request):
     return render(request, 'pages/new_customer.html')
 
+@login_required
 def view_suppliers(request):
     return render(request, 'pages/list_suppliers.html')
 
+@login_required
 def new_supplier(request):
     return render(request, 'pages/new_supplier.html')
 
+@login_required
 def view_products(request):
     return render(request, 'pages/list_products.html')
 
+@login_required
 def new_product(request):
     return render(request, 'pages/new_product.html')
 
+@login_required
 def view_stocks(request):
     return render(request, 'pages/list_stock.html')
 
+@login_required
 def view_sales(request):
     return render(request, 'pages/list_sales.html')
 
+@login_required
 def new_sale(request):
     return render(request, 'pages/new_sale.html')
 
+@login_required
 def view_purchases(request):
     return render(request, 'pages/list_purchases.html')
 
+@login_required
 def new_purchase(request):
     return render(request, 'pages/new_purchase.html')
 
 
 
 # ======================= FUNCIONS ============================================
+def user_logout(request):
+    logout(request)
+    return redirect("login")
+
+@login_required
 def add_category(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -71,6 +137,7 @@ def add_category(request):
     else:
         return redirect('home')
 
+@login_required
 def add_customer(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -106,6 +173,7 @@ def add_customer(request):
     else:
         return redirect('home')
 
+@login_required
 def add_supplier(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -128,6 +196,7 @@ def add_supplier(request):
         return redirect('home')
 
 @csrf_exempt
+@login_required
 def add_product(request):
     if request.method == "POST":
         try:
@@ -179,8 +248,8 @@ def add_product(request):
     # Se o método não for POST
     return JsonResponse({"error": "Método não permitido."}, status=405)
     
-@login_required
 @csrf_exempt
+@login_required
 def add_sale(request):
     if request.method == "POST":
         try:
@@ -270,9 +339,8 @@ def add_sale(request):
             return JsonResponse({"success": False, "error": str(e)}, status=400)
     return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
 
-
-
 @csrf_exempt
+@login_required
 def add_purchase(request):
     if request.method == "POST":
         try:
@@ -337,6 +405,7 @@ def add_purchase(request):
     return JsonResponse({"success": False, "message": "Método não permitido."}, status=405)
 
 @csrf_exempt
+@login_required
 def update_stock(request, stock_id):
     if request.method == "POST":
         try:
@@ -362,6 +431,7 @@ def update_stock(request, stock_id):
     return JsonResponse({"success": False, "message": "Método não permitido."}, status=405)
 
 @csrf_exempt
+@login_required
 def delete_product(request, product_id):
     """
     View para deletar um produto pelo ID.
@@ -375,6 +445,493 @@ def delete_product(request, product_id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Método não permitido."}, status=405)
+
+def pay_boleto(request, boleto_id):
+    if request.method == "POST":
+        boleto = get_object_or_404(Boleto, id=boleto_id)
+        boleto.status = "Pago"
+        boleto.save()
+        return JsonResponse({"message": "Boleto marcado como pago com sucesso.", "boleto_id": boleto.id})
+    return JsonResponse({"error": "Método não permitido."}, status=405)
+
+# ======================== RELATORIOS =======================================
+
+# ============ PRODUTOS
+
+def gerar_relatorio_produtos(request):
+    # Recebe o filtro de categoria e formato
+    category_id = request.GET.get('categoria')  # ID da categoria recebida via GET
+    formato = request.GET.get('formato', 'excel')  # Filtro de formato, padrão é 'excel'
+
+    # Filtra a categoria, se fornecido
+    categoria = None
+    if category_id:
+        try:
+            categoria = Category.objects.get(id=category_id)  # Obtém a categoria pelo ID
+        except Category.DoesNotExist:
+            categoria = None
+
+    # Recupera os dados da API (simulando o retorno da API para os produtos)
+    stock_data = fetch_stock_data()  # Supondo que você tenha uma função que busca dados da API
+
+    # Filtra os dados com base na categoria, se fornecido
+    if categoria:
+        stock_data = [stock for stock in stock_data if stock['product']['category'] == categoria.name]
+
+    # Chama a função de acordo com o formato escolhido (excel ou pdf)
+    if formato == 'excel':
+        return gerar_relatorio_produtos_excel(stock_data, categoria)
+    elif formato == 'pdf':
+        return gerar_relatorio_produtos_pdf(stock_data, categoria)
+    else:
+        return JsonResponse({"success": False, "error": "Formato não suportado"}, status=400)
+
+def gerar_relatorio_produtos_excel(request, categoria):
+    # Busca os dados da API
+    stock_data = fetch_stock_data()
+
+    # Filtra por categoria, se fornecida
+    if categoria:
+        stock_data = [stock for stock in stock_data if stock['product']['category'] == categoria.name]
+
+    # Criação do arquivo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatório de Produtos"
+
+    # Título do relatório
+    titulo = f"Relatório de Produtos - Categoria: {categoria.name if categoria else 'Todas'}"
+    ws.merge_cells('A1:J1')
+    ws['A1'] = titulo
+    ws['A1'].alignment = Alignment(horizontal='center')
+
+    # Cabeçalhos da tabela
+    headers = [
+        "Nome do Produto", "Gramatura", "Formato", "Quantidade de Pacotes",
+        "Quantidade por Pacote", "Total de Folhas", "Preço Unitário",
+        "Preço do KG", "Peso do Pacote", "Peso Total"
+    ]
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col_num, value=header)
+        cell.alignment = Alignment(horizontal='center')
+        ws.column_dimensions[get_column_letter(col_num)].width = len(header) + 2
+
+    # Preenche os dados da tabela
+    for row_num, stock in enumerate(stock_data, start=3):
+        product = stock['product']
+
+        # Convertendo os valores numéricos para o tipo adequado
+        quantity = int(float(stock['quantity']))
+        price = float(stock['price'])
+        total_folhas = int(float(stock['total_folhas']))
+        preco_por_kg = float(stock['preco_por_kg'])
+        peso_por_pacote = float(stock['peso_por_pacote'])
+        peso_total = float(stock['peso_total'])
+        preco_total = float(stock['preco_total'])
+
+        ws.cell(row=row_num, column=1, value=product['name'])
+        ws.cell(row=row_num, column=2, value=f"{product['weight']} {product['size']}")
+        ws.cell(row=row_num, column=3, value=product['size'])
+        ws.cell(row=row_num, column=4, value=quantity)
+        ws.cell(row=row_num, column=5, value=int(product['quantity_per_package']))
+        ws.cell(row=row_num, column=6, value=total_folhas)
+        ws.cell(row=row_num, column=7, value=f"R$ {price:.2f}")
+        ws.cell(row=row_num, column=8, value=f"R$ {preco_por_kg:.2f}")
+        ws.cell(row=row_num, column=9, value=f"{peso_por_pacote:.2f} kg")
+        ws.cell(row=row_num, column=10, value=f"{peso_total:.2f} kg")
+
+        # Alinhamento à esquerda para todas as células
+        for col_num in range(1, 11):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.alignment = Alignment(horizontal='left')
+
+    # Retorno do arquivo Excel
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"relatorio_produtos_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    wb.save(response)
+    return response
+
+def gerar_relatorio_produtos_pdf(stock_data, categoria):
+    # Criação do arquivo PDF
+    buffer = BytesIO()
+    c = SimpleDocTemplate(buffer, pagesize=A4)
+
+    # Título do relatório
+    titulo = f"Relatório de Produtos - Categoria: {categoria.name if categoria else 'Todas'}"
+
+    # Usando o Paragraph para título
+    styles = getSampleStyleSheet()
+    title_paragraph = Paragraph(titulo, styles['Title'])
+    
+    # Adicionando título ao PDF
+    story = [title_paragraph]
+
+    # Cabeçalhos da tabela com quebras de linha e abreviações
+    headers = [
+        "Nome\nProduto", "Gram.\n(kg/g)", "Formato", "Pacotes",
+        "Qtd./\nPacote", "Total\nFolhas", "Preço\nUnit.", "Preço\nKG",
+        "Peso\nPacote", "Peso\nTotal"
+    ]
+    
+    # Dados dos produtos
+    data = [headers]
+    for stock in stock_data:
+        produto = stock['product']
+
+        # Quebra o nome em linhas de até 25 caracteres e limita a 2 linhas
+        nome_formatado = "\n".join(wrap(produto['name'], width=25)[:2])
+        if len(wrap(produto['name'], width=25)) > 2:
+            nome_formatado += "..."  # Adiciona reticências se for truncado
+        
+        preco_unitario = float(stock['preco_unitario']) if stock.get('preco_unitario') else 0
+        preco_por_kg = float(stock['preco_por_kg']) if stock.get('preco_por_kg') else 0
+        peso_por_pacote = float(stock['peso_por_pacote']) if stock.get('peso_por_pacote') else 0
+        peso_total = float(stock['peso_total']) if stock.get('peso_total') else 0
+
+        # Preenche as células com os valores calculados
+        row = [
+            nome_formatado,
+            f"{produto['weight']} {produto['unit_type']}",
+            produto['size'],
+            stock['quantity'],
+            produto['quantity_per_package'],
+            stock['total_folhas'],
+            f"R$ {float(preco_unitario):.2f}",
+            f"R$ {float(preco_por_kg):.2f}",
+            f"{float(peso_por_pacote):.2f} kg",
+            f"{float(peso_total):.2f} kg",
+        ]
+        data.append(row)
+
+    # Criando a tabela com os dados
+    table = Table(data)
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white])
+    ])
+    table.setStyle(style)
+
+    # Adiciona a tabela ao PDF
+    story.append(table)
+
+    # Finaliza a criação do PDF
+    c.build(story)
+
+    # Retorna o PDF como resposta HTTP
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="relatorio_produtos.pdf"'
+    return response
+
+# ============ VENDAS
+
+def gerar_relatorio_vendas(request):
+    # Recebe as datas de início e fim do filtro
+    data_inicial = request.GET.get('data_inicial')
+    data_final = request.GET.get('data_final')
+    formato = request.GET.get('formato', 'excel')  # Default para 'excel'
+
+    # Filtro de vendas
+    vendas = Sale.objects.all()
+
+    # Filtra pelo período, se as datas forem fornecidas
+    if data_inicial:
+        data_inicial_obj = datetime.strptime(data_inicial, "%Y-%m-%d").date()
+        vendas = vendas.filter(created__date__gte=data_inicial_obj)
+
+    if data_final:
+        data_final_obj = datetime.strptime(data_final, "%Y-%m-%d").date()
+        vendas = vendas.filter(created__date__lte=data_final_obj)
+
+    if data_inicial and not data_final:
+        vendas = vendas.filter(created__date=data_inicial_obj)
+
+    if formato == 'excel':
+        return gerar_excel_vendas(vendas, data_inicial, data_final)
+    elif formato == 'pdf':
+        return gerar_pdf_vendas(vendas, data_inicial, data_final)
+    else:
+        return JsonResponse({"success": False, "error": "Formato não suportado"}, status=400)
+
+def gerar_excel_vendas(vendas, data_inicial, data_final):
+    # Função para gerar o relatório em Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatório de Vendas"
+    
+    # Título do relatório
+    if data_inicial and data_final:
+        filtro_data = f"De {data_inicial} a {data_final}"
+    elif data_inicial:
+        filtro_data = f"Somente o dia {data_inicial}"  # Ajuste para o caso de somente a data inicial ser fornecida
+    else:
+        filtro_data = "Sem filtro de data"
+
+    titulo = f"Relatório de Vendas - Filtro: {filtro_data}"
+    ws.merge_cells('A1:H1')
+    ws['A1'] = titulo
+    ws['A1'].alignment = Alignment(horizontal='center')
+
+    # Cabeçalhos da tabela
+    headers = [
+        "ID da Venda", "Cliente", "Vendedor", "Data da Venda",
+        "Tipo de Pagamento", "Valor Total", "Total de Itens", "Observações"
+    ]
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col_num, value=header)
+        cell.alignment = Alignment(horizontal='center')
+        ws.column_dimensions[get_column_letter(col_num)].width = len(header) + 2
+
+    # Dados das vendas
+    for row_num, venda in enumerate(vendas, start=3):
+        total_itens = sum(sale_product.quantity for sale_product in venda.sale_products.all())  # Soma das quantidades de produtos vendidos
+        ws.cell(row=row_num, column=1, value=venda.id)
+        ws.cell(row=row_num, column=2, value=venda.customer.name)
+        ws.cell(row=row_num, column=3, value=venda.user.username)
+        ws.cell(row=row_num, column=4, value=venda.created.strftime('%d/%m/%Y'))
+        ws.cell(row=row_num, column=5, value=venda.get_payment_type_display())
+        ws.cell(row=row_num, column=6, value=venda.full_price)
+        ws.cell(row=row_num, column=7, value=total_itens)
+        ws.cell(row=row_num, column=8, value=venda.observations or "")
+
+        # Alinhamento à esquerda
+        for col_num in range(1, 9):
+            ws.cell(row=row_num, column=col_num).alignment = Alignment(horizontal='left')
+
+    # Retorno do arquivo
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"relatorio_vendas_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    wb.save(response)
+    return response
+
+def gerar_pdf_vendas(vendas, data_inicial, data_final):
+    # Criação do arquivo PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+
+    # Título do relatório
+    if data_inicial and data_final:
+        filtro_data = f"De {data_inicial} a {data_final}"
+    elif data_inicial:
+        filtro_data = f"Somente o dia {data_inicial}"
+    else:
+        filtro_data = "Sem filtro de data"
+
+    titulo = f"Relatório de Vendas - Filtro: {filtro_data}"
+    styles = getSampleStyleSheet()
+    title_paragraph = Paragraph(titulo, styles['Title'])
+    elements.append(title_paragraph)
+
+    # Cabeçalhos da tabela
+    headers = [
+        "ID", "Cliente", "Vendedor", "Data da Venda",
+        "Pagamento", "Valor Total", "Total de Itens"
+    ]
+
+    # Dados das vendas
+    data = [headers]
+    for venda in vendas:
+        total_itens = sum(sale_product.quantity for sale_product in venda.sale_products.all())
+        row = [
+            venda.id,
+            venda.customer.name,
+            venda.user.username,
+            venda.created.strftime('%d/%m/%Y'),
+            venda.get_payment_type_display(),
+            f"R$ {venda.full_price:.2f}",
+            total_itens,
+        ]
+        data.append(row)
+
+    # Criação da tabela
+    table = Table(data, colWidths=[30, 100, 80, 80, 80, 80, 80])
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white])
+    ])
+    table.setStyle(style)
+
+    # Adiciona a tabela ao PDF
+    elements.append(table)
+
+    # Geração do PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    # Retorna o PDF como resposta HTTP
+    response = HttpResponse(buffer, content_type='application/pdf')
+    filename = f"relatorio_vendas_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+# ============ COMPRAS
+
+def gerar_relatorio_compras(request):
+    # Recebe as datas de início e fim do filtro
+    data_inicial = request.GET.get('data_inicial')
+    data_final = request.GET.get('data_final')
+    formato = request.GET.get('formato', 'excel')  # Default para 'excel'
+
+    # Filtro de compras
+    compras = Purchase.objects.all()
+
+    # Filtra pelo período, se as datas forem fornecidas
+    if data_inicial:
+        data_inicial_obj = datetime.strptime(data_inicial, "%Y-%m-%d").date()
+        compras = compras.filter(created__date__gte=data_inicial_obj)
+
+    if data_final:
+        data_final_obj = datetime.strptime(data_final, "%Y-%m-%d").date()
+        compras = compras.filter(created__date__lte=data_final_obj)
+
+    if data_inicial and not data_final:
+        compras = compras.filter(created__date=data_inicial_obj)
+
+    if formato == 'excel':
+        return gerar_excel_compras(compras, data_inicial, data_final)
+    elif formato == 'pdf':
+        return gerar_pdf_compras(compras, data_inicial, data_final)
+    else:
+        return JsonResponse({"success": False, "error": "Formato não suportado"}, status=400)
+
+def gerar_excel_compras(compras, data_inicial, data_final):
+    # Função para gerar o relatório em Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatório de Compras"
+    
+    # Título do relatório
+    if data_inicial and data_final:
+        filtro_data = f"De {data_inicial} a {data_final}"
+    elif data_inicial:
+        filtro_data = f"Somente o dia {data_inicial}"  # Ajuste para o caso de somente a data inicial ser fornecida
+    else:
+        filtro_data = "Sem filtro de data"
+
+    titulo = f"Relatório de Compras - Filtro: {filtro_data}"
+    ws.merge_cells('A1:H1')
+    ws['A1'] = titulo
+    ws['A1'].alignment = Alignment(horizontal='center')
+
+    # Cabeçalhos da tabela
+    headers = [
+        "ID da Compra", "Fornecedor", "Usuario", "Data da Compra", "Valor Total", "Total de Itens", "Observações"
+    ]
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col_num, value=header)
+        cell.alignment = Alignment(horizontal='center')
+        ws.column_dimensions[get_column_letter(col_num)].width = len(header) + 2
+
+    # Dados das compras
+    for row_num, compra in enumerate(compras, start=3):
+        total_itens = sum(purchase_product.quantity for purchase_product in compra.purchase_products.all())  # Soma das quantidades de produtos vendidos
+        ws.cell(row=row_num, column=1, value=compra.id)
+        ws.cell(row=row_num, column=2, value=compra.supplier.name)
+        ws.cell(row=row_num, column=3, value=compra.user.username)
+        ws.cell(row=row_num, column=4, value=compra.created.strftime('%d/%m/%Y'))
+        ws.cell(row=row_num, column=6, value=compra.full_price)
+        ws.cell(row=row_num, column=7, value=total_itens)
+        ws.cell(row=row_num, column=8, value=compra.observations or "")
+
+        # Alinhamento à esquerda
+        for col_num in range(1, 9):
+            ws.cell(row=row_num, column=col_num).alignment = Alignment(horizontal='left')
+
+    # Retorno do arquivo
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"relatorio_compras_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    wb.save(response)
+    return response
+
+def gerar_pdf_compras(compras, data_inicial, data_final):
+    # Criação do arquivo PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+
+    # Título do relatório
+    if data_inicial and data_final:
+        filtro_data = f"De {data_inicial} a {data_final}"
+    elif data_inicial:
+        filtro_data = f"Somente o dia {data_inicial}"
+    else:
+        filtro_data = "Sem filtro de data"
+
+    titulo = f"Relatório de Compras - Filtro: {filtro_data}"
+    styles = getSampleStyleSheet()
+    title_paragraph = Paragraph(titulo, styles['Title'])
+    elements.append(title_paragraph)
+
+    # Cabeçalhos da tabela
+    headers = [
+        "ID", "Fornecedor", "Usuário", "Data da Compra",
+        "Valor Total", "Total de Itens"
+    ]
+
+    # Dados das compras
+    data = [headers]
+    for compra in compras:
+        total_itens = sum(purchase_product.quantity for purchase_product in compra.purchase_products.all())
+        row = [
+            compra.id,
+            compra.supplier.name,
+            compra.user.username,
+            compra.created.strftime('%d/%m/%Y'),
+            f"R$ {compra.full_price:.2f}",
+            total_itens,
+        ]
+        data.append(row)
+
+    # Criação da tabela
+    table = Table(data, colWidths=[20, 100, 80, 80, 80, 80])
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white])
+    ])
+    table.setStyle(style)
+
+    # Adiciona a tabela ao PDF
+    elements.append(table)
+
+    # Geração do PDF
+    doc.build(elements)
+    buffer.seek(0)
+
+    # Retorna o PDF como resposta HTTP
+    response = HttpResponse(buffer, content_type='application/pdf')
+    filename = f"relatorio_compras_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 # ======================= API =================================================
 
 def get_all_categories(request):
@@ -461,23 +1018,66 @@ def get_unit_types(request):
     return JsonResponse({"unit_types": unit_types})
 
 def get_all_stocks(request):
-    stock_items = Stock.objects.select_related('product').all()
-    stock_list = [{
-        'id': item.id,
-        'product': {
-            'id': item.product.id,
-            'name': item.product.name,
-            'weight': item.product.weight,  # Gramatura do produto
-            'size': item.product.size,  # Formato do produto (ex.: "66x96")
-            'quantity_per_package': item.product.quantity_per_package,  # Quantidade por pack
-            # 'category': item.product.category.name,
-        },
-        'quantity': item.quantity,
-        'price': item.price,
-        'pending': item.pending,
-    } for item in stock_items]
+    category_id = request.GET.get('category')  # Filtro de categoria
+
+    if category_id:
+        try:
+            categoria = Category.objects.get(id=category_id)  # Obtém a categoria pelo ID
+            stock_items = Stock.objects.filter(product__category=categoria).select_related('product')
+        except Category.DoesNotExist:
+            return JsonResponse({"error": "Categoria não encontrada"}, status=400)
+    else:
+        stock_items = Stock.objects.all().select_related('product')  # Sem filtro, retorna todos os produtos
+
+    stock_list = []
+    for item in stock_items:
+        produto = item.product
+
+        # Cálculo do peso do pacote
+        # Convertendo as dimensões para metros e calculando a área
+        largura, altura = map(int, produto.size.split("x"))
+        area = (Decimal(largura) / 100) * (Decimal(altura) / 100)  # Área em m², convertido para Decimal
+        peso_pacote_g = Decimal(produto.weight) * area * Decimal(produto.quantity_per_package)  # Peso do pacote em gramas
+        peso_pacote_kg = peso_pacote_g / Decimal(1000)  # Peso do pacote em kg
+
+        # Preço por kg
+        preco_por_kg = item.price / peso_pacote_kg if peso_pacote_kg > 0 else Decimal(0)
+
+        # Peso total (kg)
+        peso_total_kg = peso_pacote_kg * Decimal(item.quantity)
+
+        # Preço total
+        preco_total = item.price * Decimal(item.quantity)
+
+        stock_list.append({
+            'id': item.id,
+            'product': {
+                'id': produto.id,
+                'name': produto.name,
+                'weight': produto.weight,
+                'size': produto.size,
+                'unit_type': produto.unit_type,
+                'quantity_per_package': produto.quantity_per_package,
+                'category': produto.category.name if produto.category else 'Sem categoria',
+            },
+            'quantity': item.quantity,
+            'price': item.price,
+            'pending': item.pending,
+            'preco_por_kg': round(preco_por_kg, 2),  # Preço por kg
+            'total_folhas': int(produto.quantity_per_package) * item.quantity,  # Total de folhas
+            'peso_por_pacote': round(peso_pacote_kg, 2),  # Peso por pacote em kg
+            'peso_total': round(peso_total_kg, 2),  # Peso total
+            'preco_total': round(preco_total, 2),  # Preço total
+        })
 
     return JsonResponse({'stock': stock_list})
+
+def fetch_stock_data():
+    response = requests.get("http://127.0.0.1:8000/api/stocks/")
+    if response.status_code == 200:
+        return response.json().get('stock', [])
+    else:
+        return []
 
 def get_all_sales(request):
     sales = Sale.objects.all()
@@ -597,3 +1197,37 @@ def get_latest_purchases(request):
     }
     return JsonResponse(data)
 
+def get_boletos_pendentes(request):
+    # Filtrar apenas os boletos com status "Pendente"
+    boletos_pendentes = Boleto.objects.filter(status="Pendente")
+
+    # Pré-carregar os dados relacionados para evitar consultas extras
+    boletos = boletos_pendentes.select_related("sale__customer", "sale__user")
+
+    # Construir a lista de boletos
+    boletos_list = [
+        {
+            "boleto_id": boleto.id,
+            "valor": f"R$ {boleto.value:.2f}",
+            "data_vencimento": boleto.due_date.strftime('%d/%m/%Y'),
+            "venda": {
+                "venda_id": boleto.sale.id,
+                "nome": boleto.sale.name,
+                "nfe": boleto.sale.nfe,
+                "data_venda": boleto.sale.created.strftime('%d/%m/%Y'),
+                "cliente": {
+                    "id": boleto.sale.customer.id,
+                    "nome": boleto.sale.customer.name,
+                },
+                "usuario": {
+                    "id": boleto.sale.user.id,
+                    "nome": boleto.sale.user.username,
+                },
+                "valor_total": f"R$ {boleto.sale.full_price:.2f}",
+                "observacoes": boleto.sale.observations or "",
+            },
+        }
+        for boleto in boletos
+    ]
+
+    return JsonResponse({"boletos_pendentes": boletos_list})

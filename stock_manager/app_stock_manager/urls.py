@@ -5,6 +5,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('accounts/login/', views.user_login, name='login'),
+    path("logout/", views.user_logout, name="logout"),
+    path('change-password/', views.CustomPasswordChangeView.as_view(), name='change_password'),
     path('settings/', views.settings, name='settings'),
     path('customers/new/', views.new_customer, name='new_customer'),
     path('customers/', views.view_customers, name='view_customers'),
@@ -25,6 +28,13 @@ urlpatterns = [
     path('add-purchase/', views.add_purchase, name='add_purchase'),
     path("api/stocks/<int:stock_id>/update/", views.update_stock, name="update_stock"),
     path('api/products/<int:product_id>/delete/', views.delete_product, name='delete_product'),
+    path('api/boletos/<int:boleto_id>/pay/', views.pay_boleto, name='pay_boleto'),
+
+
+    path("relatorios/produtos/", views.gerar_relatorio_produtos, name="relatorio_produtos"),
+    path('relatorios/compras/', views.gerar_relatorio_compras, name='relatorio_compras'),
+    path('relatorios/vendas/', views.gerar_relatorio_vendas, name='relatorio_vendas'),
+
     # ========== GET API =====================================================
     path('api/categories/', views.get_all_categories, name='get_all_categories'),
     path('api/customers/', views.get_all_customers, name='get_all_customers'),
@@ -38,4 +48,5 @@ urlpatterns = [
     path('api/summary/', views.get_summary, name='api_summary'),
     path('api/sales/latest/', views.get_latest_sales, name='api_latest_sales'),
     path('api/purchases/latest/', views.get_latest_purchases, name='api_latest_purchases'),
+    path('api/boletos-pendentes/', views.get_boletos_pendentes, name='boletos_pendentes'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
