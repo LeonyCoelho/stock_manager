@@ -11,9 +11,13 @@
                 {% csrf_token %}
                 <div class="row">
                     <!-- Nome da Venda -->
-                    <div class="mb-2 col-6">
+                    <div class="mb-2 col-4">
                         <label class="form-label">Nome:</label>
                         <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                    <div class="mb-2 col-2">
+                        <label class="form-label">NFE:</label>
+                        <input class="form-control" name="nfe" type="text" id="nfe" required />
                     </div>
                     
                     <!-- Metodo de Pagamento -->

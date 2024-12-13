@@ -268,6 +268,7 @@ def add_sale(request):
             sale_name = data.get("name", "")
             observations = data.get("observations", "")
             payment_type = data.get("payment_type", "")
+            nfe = data.get("nfe", "")  # Novo campo NFE
             products = data.get("products", [])
 
             # Calcula o preço total
@@ -300,6 +301,7 @@ def add_sale(request):
                 name=sale_name,
                 customer=customer,
                 observations=observations,
+                nfe=nfe,
                 payment_type=payment_type,
                 full_price=total_price,  # Salva o preço total como Decimal
             )
@@ -320,6 +322,11 @@ def add_sale(request):
                     quantity=quantity,
                     price=stock_price,  # Salva o preço unitário
                 )
+
+                # Atualizar o estoque (permitir negativo)
+                if stock:
+                    stock.quantity -= quantity
+                    stock.save(update_fields=["quantity"])  # Salva somente o campo 'quantity'
 
             # Adicionar boletos (se aplicável)
             if payment_type == "BO":
@@ -1034,20 +1041,19 @@ def get_all_stocks(request):
         produto = item.product
 
         # Cálculo do peso do pacote
-        # Convertendo as dimensões para metros e calculando a área
         largura, altura = map(int, produto.size.split("x"))
         area = (Decimal(largura) / 100) * (Decimal(altura) / 100)  # Área em m², convertido para Decimal
         peso_pacote_g = Decimal(produto.weight) * area * Decimal(produto.quantity_per_package)  # Peso do pacote em gramas
         peso_pacote_kg = peso_pacote_g / Decimal(1000)  # Peso do pacote em kg
 
-        # Preço por kg
+        # Preço por kg (sem valores negativos)
         preco_por_kg = item.price / peso_pacote_kg if peso_pacote_kg > 0 else Decimal(0)
 
-        # Peso total (kg)
-        peso_total_kg = peso_pacote_kg * Decimal(item.quantity)
+        # Peso total (kg), sempre positivo
+        peso_total_kg = abs(peso_pacote_kg * Decimal(item.quantity))
 
-        # Preço total
-        preco_total = item.price * Decimal(item.quantity)
+        # Preço total, sempre positivo
+        preco_total = abs(item.price * Decimal(item.quantity))
 
         stock_list.append({
             'id': item.id,
@@ -1060,11 +1066,11 @@ def get_all_stocks(request):
                 'quantity_per_package': produto.quantity_per_package,
                 'category': produto.category.name if produto.category else 'Sem categoria',
             },
-            'quantity': item.quantity,
+            'quantity': item.quantity,  # Quantidade pode ser negativa para indicar estoque negativo
             'price': item.price,
             'pending': item.pending,
             'preco_por_kg': round(preco_por_kg, 2),  # Preço por kg
-            'total_folhas': int(produto.quantity_per_package) * item.quantity,  # Total de folhas
+            'total_folhas': int(produto.quantity_per_package) * abs(item.quantity),  # Total de folhas, sempre positivo
             'peso_por_pacote': round(peso_pacote_kg, 2),  # Peso por pacote em kg
             'peso_total': round(peso_total_kg, 2),  # Peso total
             'preco_total': round(preco_total, 2),  # Preço total
@@ -1231,3 +1237,24 @@ def get_boletos_pendentes(request):
     ]
 
     return JsonResponse({"boletos_pendentes": boletos_list})
+
+def get_negative_stocks(request):
+    """
+    Retorna todos os estoques com quantidade negativa.
+    """
+    negative_stocks = Stock.objects.filter(quantity__lt=0).select_related('product')
+    stock_list = []
+
+    for stock in negative_stocks:
+        product = stock.product
+        stock_list.append({
+            'product_name': product.name,
+            'category': product.category.name if product.category else "Sem categoria",
+            'quantity': float(stock.quantity),  # Convertendo para evitar problemas com JSON
+            'price': float(stock.price),
+            'pending': float(stock.pending),
+        })
+
+    return JsonResponse({'negative_stocks': stock_list})
+
+

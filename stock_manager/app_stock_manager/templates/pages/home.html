@@ -29,7 +29,7 @@
 
      <!-- ======================= BOLETOS PENDENTES ============================= -->
 
-     <div class="row">
+    <div class="row">
         <div class="col">
             <div class="card mb-3">
                 <div class="card-header">Boletos Pendentes</div>
@@ -54,6 +54,31 @@
         </div>
     </div>
     
+     <!-- ================== CARDS DE RESUMO ===================================== -->
+     
+     <div class="mb-3">
+        <div class="card">
+            <div class="card-header">
+               Produtos com pendências em estoque
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Categoria</th>
+                            <th>Quantidade</th>
+                            <th>Preço</th>
+                        </tr>
+                    </thead>
+                    <tbody id="negative-stocks-table">
+                        <!-- Conteúdo será preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+     
      <!-- ================== CARDS DE RESUMO ===================================== -->
 
     <div class="row">
@@ -646,8 +671,51 @@ document.addEventListener("DOMContentLoaded", function () {
     fetchBoletosPendentes();
 });
 
-    </script>
+</script>
     
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // URL da API para buscar os estoques negativos
+        const apiUrl = "/api/negative-stocks/";
+
+        // Função para preencher a tabela
+        function loadNegativeStocks() {
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById("negative-stocks-table");
+                    tableBody.innerHTML = ""; // Limpa o conteúdo atual
+
+                    if (data.negative_stocks && data.negative_stocks.length > 0) {
+                        data.negative_stocks.forEach(stock => {
+                            const row = `
+                                <tr>
+                                    <td>${stock.product_name}</td>
+                                    <td>${stock.category}</td>
+                                    <td>${stock.quantity}</td>
+                                    <td>R$ ${stock.price.toFixed(2)}</td>
+                                </tr>
+                            `;
+                            tableBody.innerHTML += row;
+                        });
+                    } else {
+                        tableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhum estoque negativo encontrado.</td>
+                            </tr>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar estoques negativos:", error);
+                });
+        }
+
+        // Carrega os estoques negativos ao carregar a página
+        loadNegativeStocks();
+    });
+</script>
+
 
 <!-- <script>
     let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado

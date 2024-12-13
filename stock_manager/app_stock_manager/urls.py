@@ -49,4 +49,6 @@ urlpatterns = [
     path('api/sales/latest/', views.get_latest_sales, name='api_latest_sales'),
     path('api/purchases/latest/', views.get_latest_purchases, name='api_latest_purchases'),
     path('api/boletos-pendentes/', views.get_boletos_pendentes, name='boletos_pendentes'),
+    path('api/negative-stocks/', views.get_negative_stocks, name='get_negative_stocks'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
