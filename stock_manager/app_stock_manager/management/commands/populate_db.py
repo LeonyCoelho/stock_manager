@@ -10,23 +10,6 @@ from app_stock_manager.models import (
 
 User = get_user_model()
 
-# Adicione esta linha no início do arquivo populate_db.py
-default_user = User.objects.first()  # Seleciona o primeiro usuário existente, se houver
-
-# Substitua a parte onde as compras são criadas:
-if default_user:  # Só cria compras se existir ao menos um usuário
-    purchase = Purchase.objects.create(
-        user=default_user,
-        name="Compra Teste",
-        supplier=Supplier.objects.first(),
-        invoice_number="INV12345",
-        full_price=Decimal("500.00"),
-    )
-else:
-    print("Nenhum usuário encontrado. As compras não serão criadas.")
-
-User = get_user_model()
-
 class Command(BaseCommand):
     help = 'Popula o banco de dados com informações fictícias'
 
