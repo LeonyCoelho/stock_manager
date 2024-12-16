@@ -6,8 +6,7 @@
             <span>Estoque</span>
             <span class="d-flex justify-content-between align-items-center">
                 <div class="input-group">
-                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
+                    <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Pesquisar" aria-label="Pesquisar">
                 </div>
             </span>
         </div>
@@ -174,6 +173,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Função para filtrar os dados com base no nome do produto
+    function filterStock() {
+        const searchText = document.getElementById("searchInput").value.toLowerCase();
+        const filteredData = stockData.filter(stock => 
+            stock.product.name.toLowerCase().includes(searchText)
+        );
+        stockData = filteredData; // Atualiza os dados com o filtro
+        renderTable();
+        renderPagination();
+    }
+
+    // Evento para aplicar o filtro quando o usuário digitar
+    document.getElementById("searchInput").addEventListener("input", filterStock);
+
     // Inicializa a tabela
     fetchStock();
 
@@ -228,6 +241,5 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 </script>
-
 
 {% endblock %}

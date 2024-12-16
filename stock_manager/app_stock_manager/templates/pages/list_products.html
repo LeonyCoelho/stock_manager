@@ -6,8 +6,7 @@
             <span>Lista de produtos</span>
             <span class="d-flex justify-content-between align-items-center">
                 <div class="input-group">
-                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
+                    <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
                 </div>
                 <a href="{% url 'new_product' %}" class="btn btn-primary btn-sm ms-3">Novo</a>
             </span>
@@ -43,6 +42,7 @@
         const rowsPerPage = 20;
         let currentPage = 1;
         let products = [];
+        let filteredProducts = [];
 
         // Função para buscar dados da API
         async function fetchCustomers() {
@@ -50,10 +50,11 @@
                 const response = await fetch(apiUrl);
                 const data = await response.json();
                 products = data.products || [];
+                filteredProducts = [...products]; // Inicializa a lista filtrada com todos os produtos
                 renderTable();
                 renderPagination();
             } catch (error) {
-                console.error("Erro ao buscar clientes:", error);
+                console.error("Erro ao buscar produtos:", error);
             }
         }
 
@@ -66,7 +67,7 @@
 
             const start = (currentPage - 1) * rowsPerPage;
             const end = start + rowsPerPage;
-            const pageData = products.slice(start, end);
+            const pageData = filteredProducts.slice(start, end);
 
             pageData.forEach((product, index) => {
                 const row = `
@@ -111,10 +112,9 @@
             document.querySelector("body").insertAdjacentHTML("beforeend", modals);
         }
 
-
         // Função para renderizar os botões de paginação
         function renderPagination() {
-            const totalPages = Math.ceil(products.length / rowsPerPage);
+            const totalPages = Math.ceil(filteredProducts.length / rowsPerPage);
             const pagination = document.querySelector("#pagination");
             pagination.innerHTML = ""; // Limpa os botões antes de renderizar
 
@@ -199,6 +199,18 @@
             }
             return cookieValue;
         }
+
+        // Função para filtrar os produtos com base no texto de busca
+        document.querySelector("#searchInput").addEventListener("input", function () {
+            const searchText = this.value.toLowerCase();
+            filteredProducts = products.filter(product => 
+                product.name.toLowerCase().includes(searchText)
+
+            );
+            currentPage = 1; // Reinicia para a primeira página após buscar
+            renderTable();
+            renderPagination();
+        });
 
         // Inicializa a tabela
         fetchCustomers();
