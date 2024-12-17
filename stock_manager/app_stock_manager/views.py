@@ -1078,6 +1078,33 @@ def get_all_stocks(request):
 
     return JsonResponse({'stock': stock_list})
 
+def api_stock(request):
+    query = request.GET.get('search', '')
+
+    # Filtra os estoques com base no nome do produto
+    if query:
+        stocks = Stock.objects.filter(product__name__icontains=query)
+    else:
+        stocks = Stock.objects.all()
+
+    # Retorna os dados do estoque em JSON
+    data = {
+        "stocks": [
+            {
+                "id": stock.id,
+                "product_name": stock.product.name,
+                "quantity": stock.quantity,
+                "price": stock.price if stock.price else 0,
+                "preco_por_kg": stock.preco_por_kg,
+                "preco_total": stock.preco_total,
+                "peso_por_pacote": stock.peso_por_pacote,
+                "peso_total": stock.peso_total,
+            }
+            for stock in stocks
+        ]
+    }
+    return JsonResponse(data)
+
 def fetch_stock_data():
     response = requests.get("http://127.0.0.1:8000/api/stocks/")
     if response.status_code == 200:
