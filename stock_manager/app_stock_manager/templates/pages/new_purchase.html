@@ -126,7 +126,7 @@ function renderSelectedProducts() {
     if (addedProducts.length === 0) {
         selectedProductsContainer.innerHTML = `
             <tr>
-                <td colspan="4" class="text-center">Nenhum produto adicionado.</td>
+                <td colspan="5" class="text-center">Nenhum produto adicionado.</td>
             </tr>
         `;
         return;
@@ -146,7 +146,16 @@ function renderSelectedProducts() {
                         onchange="updateQuantity(${product.id}, this.value)"
                     />
                 </td>
-                <td>R$ ${Number(product.price).toFixed(2)}</td>
+                <td>
+                    <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        value="${Number(product.price).toFixed(2)}"
+                        min="0"
+                        step="0.01"
+                        onchange="updatePrice(${product.id}, this.value)"
+                    />
+                </td>
                 <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
                 <td>
                     <button
@@ -161,20 +170,30 @@ function renderSelectedProducts() {
         `
         )
         .join("");
-            // Calcula o total da compra
-        const total = addedProducts.reduce(
-            (sum, product) => sum + Number(product.price) * product.quantity,
-            0
-        );
 
-        // Adiciona a linha do total ao final da tabela
-        selectedProductsContainer.innerHTML += `
-            <tr>
-                <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
-            </tr>
-        `;
+    // Calcula o total da compra
+    const total = addedProducts.reduce(
+        (sum, product) => sum + Number(product.price) * product.quantity,
+        0
+    );
+
+    // Adiciona a linha do total ao final da tabela
+    selectedProductsContainer.innerHTML += `
+        <tr>
+            <td colspan="3" class="text-end"><strong>Total:</strong></td>
+            <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
+        </tr>
+    `;
 }
+
+// Função para atualizar o preço do produto
+window.updatePrice = function (productId, newPrice) {
+    const product = addedProducts.find((p) => p.id === productId);
+    if (product && newPrice >= 0) {
+        product.price = parseFloat(newPrice);
+        renderSelectedProducts();
+    }
+};
 
     // Função para atualizar quantidade de um produto
     window.updateQuantity = function (productId, quantity) {
@@ -223,7 +242,8 @@ function renderSelectedProducts() {
             products: addedProducts.map(product => ({
                 id: product.id,
                 quantity: product.quantity,
-            })),
+                price: product.price, // Adiciona o preço editado pelo usuário
+            })),            
         };
 
         // Log dos dados capturados (debug)

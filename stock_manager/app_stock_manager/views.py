@@ -388,15 +388,19 @@ def add_purchase(request):
                     stock.save()
 
                     # Calcula o total do item
-                    item_total = stock.price * quantity
-                    full_price += item_total
+                    # Captura o preço informado pelo usuário ou usa o do estoque como fallback
+                    custom_price = Decimal(item.get("price", stock.price))  
 
+                    # Calcula o total do item
+                    item_total = custom_price * quantity
+                    full_price += item_total
+                    
                     # Cria o PurchaseProduct
                     PurchaseProduct.objects.create(
                         purchase=purchase,
                         product=product,
                         quantity=quantity,
-                        price=stock.price
+                        price=custom_price
                     )
 
                 # Atualiza o preço total da compra
