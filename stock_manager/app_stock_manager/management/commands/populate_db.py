@@ -37,7 +37,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Categorias criadas: {categories}")
 
         # Clientes
-        for i in range(5):
+        for i in range(20):
             Customer.objects.create(
                 name=f"Cliente {i+1}",
                 cpf_or_cnpj=f"123.456.789-0{i}",
@@ -61,7 +61,7 @@ class Command(BaseCommand):
 
         # Produtos
         category = Category.objects.first()
-        for i in range(10):
+        for i in range(40):
             Product.objects.create(
                 name=f"Produto {i+1}",
                 weight=i * 100,
@@ -84,7 +84,7 @@ class Command(BaseCommand):
 
         # Compras
         supplier = Supplier.objects.first()
-        for i in range(5):
+        for i in range(15):
             purchase = Purchase.objects.create(
                 user=user,
                 name=f"Compra {i+1}",
@@ -104,7 +104,7 @@ class Command(BaseCommand):
         customers = Customer.objects.all()
         products = Product.objects.all()
         # Vendas
-        for i in range(3):
+        for i in range(15):
             sale = Sale.objects.create(
                 user=user,
                 name=f"Venda {i+1}",

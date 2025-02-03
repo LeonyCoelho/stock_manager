@@ -1135,6 +1135,7 @@ def get_all_sales(request):
             "customer_name": sale.customer.name,
             "full_price": float(sale.full_price),
             "products": sale_products,
+            "nfe": sale.nfe,
         })
 
     return JsonResponse({"sales": sale_list})
