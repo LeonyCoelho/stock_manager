@@ -74,7 +74,13 @@
                 <td>${start + index + 1}</td>
                 <td>${purchase.purchase_name}</td>
                 <td>${purchase.supplier_name}</td>
-                <td>${new Date(purchase.purchase_created).toLocaleString()}</td>
+                                <td>${new Date(purchase.purchase_created).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                })}</td>
                 <td>R$${purchase.full_price.toFixed(2)}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal${purchase.purchase_id}">

@@ -281,9 +281,9 @@ def add_sale(request):
                 if not stock:
                     return JsonResponse({"success": False, "error": f"Produto {product.name} sem estoque."}, status=400)
                 
-                stock_price = Decimal(stock.price)  # Converte para Decimal
+                custom_price = Decimal(product_data.get("price", stock.price))  # Usa o preço enviado, se houver
                 quantity = Decimal(product_data["quantity"])  # Converte para Decimal
-                total_price += stock_price * quantity  # Atualiza o preço total com Decimal
+                total_price += custom_price * quantity
 
             # Verifica se campos obrigatórios estão presentes
             required_fields = ["name", "customer", "payment_type", "products"]
@@ -320,8 +320,9 @@ def add_sale(request):
                     sale=sale,
                     product=product,
                     quantity=quantity,
-                    price=stock_price,  # Salva o preço unitário
+                    price=custom_price,  # Usa o preço enviado pelo usuário
                 )
+
 
                 # Atualizar o estoque (permitir negativo)
                 if stock:

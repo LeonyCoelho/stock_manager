@@ -86,9 +86,9 @@
             <div class="card text-white bg-success mb-3">
                 <div class="card-header">Resumo Diário</div>
                 <div class="card-body">
-                    <h5 class="card-title">Vendas: R$ <span id="dailySalesTotal">0.00</span></h5>
+                    <h5 class="card-title">Vendas: <span id="dailySalesTotal">0.00</span></h5>
                     <p class="card-text">Produtos Vendidos: <span id="dailySoldProducts">0</span></p>
-                    <p class="card-text">Compras: R$ <span id="dailyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Compras: <span id="dailyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="dailyPurchasedProducts">0</span></p>
                 </div>
             </div>
@@ -97,9 +97,9 @@
             <div class="card text-white bg-success mb-3">
                 <div class="card-header">Resumo Semanal</div>
                 <div class="card-body">
-                    <h5 class="card-title">Vendas: R$ <span id="weeklySalesTotal">0.00</span></h5>
+                    <h5 class="card-title">Vendas: <span id="weeklySalesTotal">0.00</span></h5>
                     <p class="card-text">Produtos Vendidos: <span id="weeklySoldProducts">0</span></p>
-                    <p class="card-text">Compras: R$ <span id="weeklyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Compras: <span id="weeklyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="weeklyPurchasedProducts">0</span></p>
                 </div>
             </div>
@@ -108,9 +108,9 @@
             <div class="card text-white bg-success mb-3">
                 <div class="card-header">Resumo Mensal</div>
                 <div class="card-body">
-                    <h5 class="card-title">Vendas: R$ <span id="monthlySalesTotal">0.00</span></h5>
+                    <h5 class="card-title">Vendas: <span id="monthlySalesTotal">0.00</span></h5>
                     <p class="card-text">Produtos Vendidos: <span id="monthlySoldProducts">0</span></p>
-                    <p class="card-text">Compras: R$ <span id="monthlyPurchasesTotal">0.00</span></p>
+                    <p class="card-text">Compras: <span id="monthlyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="monthlyPurchasedProducts">0</span></p>
                 </div>
             </div>
@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             <tr>
                 <td>${sale.sale_name || "N/A"}</td>
                 <td>${sale.customer_name || "N/A"}</td>
-                <td>${sale.sale_created ? formatDate(sale.sale_created) : "N/A"}</td>
+                <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
             </tr>
         `).join("");
@@ -234,7 +234,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             <tr>
                 <td>${purchase.purchase_name || "N/A"}</td>
                 <td>${purchase.supplier_name || "N/A"}</td>
-                <td>${purchase.purchase_created ? formatDate(purchase.purchase_created) : "N/A"}</td>
+                <td>${purchase.purchase_created ? new Date(purchase.purchase_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(purchase.full_price || 0).toFixed(2)}</td>
             </tr>
         `).join("");
@@ -513,7 +513,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     <td>${vendaData.data_venda}</td>
                     <td>${vendaData.total_boletos_pendentes}</td>
                     <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
-                    <td>R$ ${vendaData.valor_total.toFixed(2)}</td>
                     <td>
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
                             Detalhes

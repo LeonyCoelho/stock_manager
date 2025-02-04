@@ -16,7 +16,7 @@
                         <input class="form-control" name="name" type="text" id="name" required />
                     </div>
                     <div class="mb-2 col-2">
-                        <label class="form-label">NFE:</label>
+                        <label class="form-label">Nº do pedido</label>
                         <input class="form-control" name="nfe" type="text" id="nfe" required />
                     </div>
                     
@@ -177,7 +177,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     />
                 </td>
                 <td>R$ ${Number(product.price).toFixed(2)}</td>
-                <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
+                <td>
+                    <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        value="${Number(product.price).toFixed(2)}"
+                        min="0"
+                        step="0.01"
+                        onchange="updatePrice(${product.id}, this.value)"
+                    />
+                </td>
                 <td>
                     <button
                         type="button"
@@ -303,7 +312,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         <td>
                             <input type="number" class="form-control form-control-sm" value="${product.quantity}" min="1" onchange="updateQuantity(${product.id}, this.value)" />
                         </td>
-                        <td>R$ ${Number(product.price).toFixed(2)}</td>
+                        <td>
+                            <input
+                                type="number"
+                                class="form-control form-control-sm"
+                                value="${Number(product.price).toFixed(2)}"
+                                min="0"
+                                step="0.01"
+                                onchange="updatePrice(${product.id}, this.value)"
+                            />
+                        </td>
                         <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
                         <td>
                             <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button>
@@ -322,6 +340,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 </tr>
             `;
         }
+
+        // Função para atualizar o preço do produto
+        window.updatePrice = function (productId, newPrice) {
+            const product = addedProducts.find((p) => p.id === productId);
+            if (product && newPrice >= 0) {
+                product.price = parseFloat(newPrice);
+                renderSelectedProducts();
+            }
+        };
     
         // Função para atualizar quantidade de um produto
         window.updateQuantity = function (productId, quantity) {
@@ -398,7 +425,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 customer,
                 payment_type: paymentType,
                 observations,
-                products: addedProducts.map(({ id, quantity }) => ({ id, quantity })),
+                products: addedProducts.map(({ id, quantity, price }) => ({
+                    id,
+                    quantity,
+                    price,
+                })),                
             };
     
             if (paymentType === "BO") {

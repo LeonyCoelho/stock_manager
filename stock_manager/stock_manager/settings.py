@@ -108,9 +108,22 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
+# Definir o idioma para português do Brasil
 LANGUAGE_CODE = 'pt-br'
 
+# Definir o fuso horário correto
+TIME_ZONE = 'America/Sao_Paulo'
+
+# Formato de datas e horas para o Brasil
+DATE_FORMAT = "d/m/Y"
+DATETIME_FORMAT = "d/m/Y H:i:s"
+TIME_FORMAT = "H:i:s"
+
 TIME_ZONE = 'UTC'
+
+USE_L10N = True  # Habilita a localização
+
+
 
 USE_I18N = True
 
