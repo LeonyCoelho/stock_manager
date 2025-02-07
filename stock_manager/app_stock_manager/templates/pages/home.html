@@ -80,10 +80,41 @@
     </div>
      
      <!-- ================== CARDS DE RESUMO ===================================== -->
+     
+     <div class="mb-3">
+        <div class="row">
+            <!-- Card de Estoque Baixo -->
+            <div class="col-md-6">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">🔴 Estoque Baixo</div>
+                    <div class="card-body">
+                        <ul id="low-stock-list" class="list-group">
+                            <li class="list-group-item text-muted">Carregando...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Card de Estoque Alto -->
+            <div class="col-md-6">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">🔵 Estoque Alto</div>
+                    <div class="card-body">
+                        <ul id="high-stock-list" class="list-group">
+                            <li class="list-group-item text-muted">Carregando...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+     
+     <!-- ================== CARDS DE RESUMO ===================================== -->
 
     <div class="row">
         <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
+            <div class="card mb-3">
                 <div class="card-header">Resumo Diário</div>
                 <div class="card-body">
                     <h5 class="card-title">Vendas: <span id="dailySalesTotal">0.00</span></h5>
@@ -94,7 +125,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
+            <div class="card mb-3">
                 <div class="card-header">Resumo Semanal</div>
                 <div class="card-body">
                     <h5 class="card-title">Vendas: <span id="weeklySalesTotal">0.00</span></h5>
@@ -105,7 +136,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
+            <div class="card mb-3">
                 <div class="card-header">Resumo Mensal</div>
                 <div class="card-body">
                     <h5 class="card-title">Vendas: <span id="monthlySalesTotal">0.00</span></h5>
@@ -137,6 +168,7 @@
                             <!-- Dados inseridos via JavaScript -->
                         </tbody>
                     </table>
+                    <a class="btn btn-secondary">Ver mais</a>
                 </div>
             </div>
         </div>
@@ -159,6 +191,7 @@
                             <!-- Dados inseridos via JavaScript -->
                         </tbody>
                     </table>
+                    <a class="btn btn-secondary">Ver mais</a>
                 </div>
             </div>
         </div>
@@ -226,6 +259,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
             </tr>
+
         `).join("");
 
         // Renderizar as últimas compras
@@ -249,212 +283,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     await fetchLatestData();
 });
 </script>
-<!-- <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const apiUrl = "/api/boletos-pendentes/";
-    const tableBody = document.querySelector("#boletosPendetes");
 
-    // Função para buscar os boletos pendentes
-    async function fetchBoletosPendentes() {
-        try {
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-            renderTable(data.boletos_pendentes);
-        } catch (error) {
-            console.error("Erro ao buscar boletos pendentes:", error);
-        }
-    }
-
-    // Função para renderizar a tabela
-    function renderTable(boletos) {
-    tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
-    const modalContainer = document.createElement("div"); // Contêiner para armazenar os modais
-    modalContainer.id = "modalContainer";
-    modalContainer.innerHTML = ""; // Limpa os modais existentes
-
-    // Mapeia boletos por venda
-    const vendasMap = new Map();
-
-    boletos.forEach(boleto => {
-        const venda = boleto.venda;
-
-        // Verifica se a venda já foi adicionada ao mapa
-        if (!vendasMap.has(venda.venda_id)) {
-            vendasMap.set(venda.venda_id, {
-                nome: venda.nome,
-                data_venda: venda.data_venda,
-                valor_total: parseFloat(venda.valor_total.replace('R$', '').trim()) || 0,
-                total_boletos: 0,
-                boletos_pagos: 0,
-                total_pendente: 0,
-                boletos: [],
-                total_boletos_pendentes: 0,  // Novo campo para contar boletos pendentes
-                valor_total_pendentes: 0,    // Novo campo para somar o valor dos boletos pendentes
-            });
-        }
-
-        const vendaData = vendasMap.get(venda.venda_id);
-
-        // Atualiza os dados da venda
-        vendaData.boletos.push(boleto);
-        vendaData.total_boletos++;
-
-        // Se o boleto estiver pendente, atualiza os campos relacionados
-        if (boleto.valor && parseFloat(boleto.valor.replace('R$', '').trim()) > 0) {
-            vendaData.total_boletos_pendentes++;
-            vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace('R$', '').trim());
-        }
-
-        // Mantém o valor total
-        vendaData.valor_total = parseFloat(venda.valor_total.replace('R$', '').trim());
-    });
-
-    // Renderiza cada venda
-    vendasMap.forEach((vendaData, vendaId) => {
-        // Linha da tabela principal
-        const row = `
-            <tr>
-                <td>${vendaData.nome}</td>
-                <td>${vendaData.data_venda}</td>
-                <td>${vendaData.total_boletos_pendentes}/${vendaData.total_boletos}</td>
-                <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
-                <td>R$ ${vendaData.valor_total.toFixed(2)}</td>
-                <td>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
-                        Detalhes
-                    </button>
-                </td>
-            </tr>
-        `;
-        tableBody.innerHTML += row; // Adiciona a linha à tabela
-
-        // Modal da venda
-        const modal = `
-            <div class="modal fade" id="boletoModal${vendaId}" tabindex="-1" aria-labelledby="boletoModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="boletoModalLabel">${vendaData.nome}</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Vencimento</th>
-                                        <th>Valor</th>
-                                        <th>Status</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${vendaData.boletos.map(boleto => {
-                                        // Definindo o valor e o status para cada boleto
-                                        const valor = parseFloat(boleto.valor.replace('R$', '').trim()).toFixed(2);
-                                        const status = boleto.status || "Pendente"; // Aqui é necessário ter um campo `status` no boleto
-                                        
-                                        return `
-                                            <tr>
-                                                <td>${boleto.data_vencimento}</td>
-                                                <td>R$ ${valor}</td>
-                                                <td>${status}</td>
-                                                <td>
-                                                    <button type="button" class="btn btn-primary" onclick="openPaymentModal(${boleto.boleto_id})">Pagar</button>
-                                                </td>
-                                            </tr>
-                                        `;
-                                    }).join("")}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        modalContainer.insertAdjacentHTML("beforeend", modal);
-
-        // Adiciona o modal de confirmação de pagamento ao final do container
-        const paymentModal = `
-            <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="confirmPaymentModalLabel">Confirmar Pagamento</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body">
-                            Tem certeza de que deseja marcar este boleto como pago?
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-primary" id="confirmPaymentButton">Confirmar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        modalContainer.insertAdjacentHTML("beforeend", paymentModal);
-        });
-
-        // Insere os modais no final do body
-        const existingModalContainer = document.getElementById("modalContainer");
-        if (existingModalContainer) {
-            existingModalContainer.replaceWith(modalContainer);
-        } else {
-            document.body.appendChild(modalContainer);
-        }
-    }
-
-
-
-    // Função para confirmar pagamento
-    async function confirmarPagamento(boletoId) {
-        try {
-            const url = `/api/boletos/${boletoId}/pagar/`;
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCookie("csrftoken")
-                }
-            });
-
-            if (response.ok) {
-                alert("Boleto pago com sucesso!");
-                fetchBoletosPendentes(); // Atualiza a tabela após o pagamento
-            } else {
-                alert("Erro ao pagar o boleto.");
-            }
-        } catch (error) {
-            console.error("Erro ao pagar o boleto:", error);
-        }
-    }
-
-    // Função utilitária para buscar o CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-            const cookies = document.cookie.split(";");
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith(name + "=")) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    // Inicializa a tabela
-    fetchBoletosPendentes();
-});
-
-
-</script> -->
+{% comment %} ========================== BOLETOS PENDENTES ================================= {% endcomment %}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -513,9 +343,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     <td>${vendaData.data_venda}</td>
                     <td>${vendaData.total_boletos_pendentes}</td>
                     <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
+                    <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
                     <td>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
-                            Detalhes
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
+                            <i class="nf nf-md-eye"></i>
                         </button>
                     </td>
                 </tr>
@@ -714,6 +545,74 @@ document.addEventListener("DOMContentLoaded", function () {
         loadNegativeStocks();
     });
 </script>
+
+{% comment %} =========== ESTOQUE FORA DO LIMITE ============================== {% endcomment %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/stocks/";  // URL da API que retorna os estoques
+        const lowStockList = document.getElementById("low-stock-list");
+        const highStockList = document.getElementById("high-stock-list");
+    
+        // Função para buscar os estoques e filtrar os produtos fora dos limites
+        async function fetchStockAlerts() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                const stocks = data.stock || [];  // Garante que a lista existe
+    
+                // Limpa a lista antes de adicionar novos itens
+                lowStockList.innerHTML = "";
+                highStockList.innerHTML = "";
+    
+                let lowStockCount = 0;
+                let highStockCount = 0;
+    
+                stocks.forEach(stock => {
+                    const quantity = parseFloat(stock.quantity);
+                    const minQuantity = parseFloat(stock.min_quantity);
+                    const maxQuantity = parseFloat(stock.max_quantity);
+    
+                    if (quantity < minQuantity) {
+                        lowStockCount++;
+                        lowStockList.insertAdjacentHTML("beforeend", `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${stock.product.name}
+                                <span class="badge bg-danger">${quantity} / ${minQuantity}</span>
+                            </li>
+                        `);
+                    } else if (quantity > maxQuantity) {
+                        highStockCount++;
+                        highStockList.insertAdjacentHTML("beforeend", `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${stock.product.name}
+                                <span class="badge bg-primary">${quantity} / ${maxQuantity}</span>
+                            </li>
+                        `);
+                    }
+                });
+    
+                // Se não houver itens, exibir mensagem "Nenhum item encontrado"
+                if (lowStockCount === 0) {
+                    lowStockList.innerHTML = `<li class="list-group-item text-muted">Nenhum item com estoque baixo</li>`;
+                }
+                if (highStockCount === 0) {
+                    highStockList.innerHTML = `<li class="list-group-item text-muted">Nenhum item com estoque alto</li>`;
+                }
+    
+            } catch (error) {
+                console.error("Erro ao buscar alertas de estoque:", error);
+                lowStockList.innerHTML = `<li class="list-group-item text-danger">Erro ao carregar</li>`;
+                highStockList.innerHTML = `<li class="list-group-item text-danger">Erro ao carregar</li>`;
+            }
+        }
+    
+        // Chama a função ao carregar a página
+        fetchStockAlerts();
+    });
+    </script>
+    
+
 
 
 <!-- <script>

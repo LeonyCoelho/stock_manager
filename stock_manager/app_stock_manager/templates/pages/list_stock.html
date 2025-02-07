@@ -64,40 +64,46 @@ document.addEventListener("DOMContentLoaded", function () {
     // Função para renderizar a tabela com os dados da API
     function renderTable() {
         const tableBody = document.querySelector("#stock-table tbody");
-        tableBody.innerHTML = "";  // Limpa a tabela antes de renderizar
-
+        tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+    
         const start = (currentPage - 1) * rowsPerPage;
         const end = start + rowsPerPage;
         const pageData = stockData.slice(start, end);
-
-        let modals = "";  // Acumula os modais fora do loop
-
+    
+        let modals = ""; // Acumula os modais fora do loop
+    
         pageData.forEach((stock, index) => {
-            // Garantir que os valores sejam números antes de usá-los
-            const price = parseFloat(stock.price) || 0;  // Converte para número, caso não seja
-            const precoPorKg = parseFloat(stock.preco_por_kg) || 0;  // Converte para número, caso não seja
-            const pesoPorPacote = parseFloat(stock.peso_por_pacote) || 0;  // Converte para número, caso não seja
-            const pesoTotal = parseFloat(stock.peso_total) || 0;  // Converte para número, caso não seja
-            const precoTotal = parseFloat(stock.preco_total) || 0;  // Converte para número, caso não seja
-
+            const price = parseFloat(stock.price) || 0;
+            const precoPorKg = parseFloat(stock.preco_por_kg) || 0;
+            const pesoPorPacote = parseFloat(stock.peso_por_pacote) || 0;
+            const pesoTotal = parseFloat(stock.peso_total) || 0;
+            const precoTotal = parseFloat(stock.preco_total) || 0;
+    
+            // Determinar se deve exibir o badge de alerta
+            let badge = "";
+            if (parseFloat(stock.quantity) < parseFloat(stock.min_quantity)) {
+                badge = `<span class="badge bg-danger ms-2"><i class="nf nf-md-trending_down"></i></span>`;
+            } else if (parseFloat(stock.quantity) > parseFloat(stock.max_quantity)) {
+                badge = `<span class="badge bg-primary ms-2"><i class="nf nf-md-trending_up"></i></span>`;
+            }
+    
             const row = `
                 <tr>
                     <td>${start + index + 1}</td>
                     <td>${stock.product.name}</td>
-                    <td>${stock.quantity}</td>
-                    <td>R$ ${price.toFixed(2)}</td>  <!-- Preço Unitário -->
-                    <td>R$ ${precoPorKg.toFixed(2)}</td>  <!-- Preço por KG -->
-                    <td>R$ ${precoTotal.toFixed(2)}</td>  <!-- Preço Total -->
-                    <td>${pesoPorPacote.toFixed(2)} kg</td>  <!-- Peso do Pacote -->
-                    <td>${pesoTotal.toFixed(2)} kg</td>  <!-- Peso Total -->
+                    <td>${stock.quantity} ${badge}</td>
+                    <td>R$ ${price.toFixed(2)}</td>
+                    <td>R$ ${precoPorKg.toFixed(2)}</td>
+                    <td>R$ ${precoTotal.toFixed(2)}</td>
+                    <td>${pesoPorPacote.toFixed(2)} kg</td>
+                    <td>${pesoTotal.toFixed(2)} kg</td>
                     <td><button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#stockModal${stock.id}">edit</button></td>
                 </tr>
             `;
-
-            // Adiciona a linha na tabela
+    
             tableBody.insertAdjacentHTML("beforeend", row);
-
-            // Adiciona o modal correspondente
+    
+            // Adiciona os modais de edição para cada item
             modals += `
                 <div class="modal fade" id="stockModal${stock.id}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                     <div class="modal-dialog">
@@ -112,7 +118,11 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <input type="number" class="form-control" name="quantity" value="${stock.quantity}">
                                     <label class="form-label">Preço</label>
                                     <input type="number" class="form-control" name="price" value="${stock.price}">
-                                    </form>
+                                    <label class="form-label">Quantidade Mínima</label>
+                                    <input type="number" class="form-control" name="min_quantity" value="${stock.min_quantity}">
+                                    <label class="form-label">Quantidade Máxima</label>
+                                    <input type="number" class="form-control" name="max_quantity" value="${stock.max_quantity}">
+                                </form>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -123,11 +133,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
             `;
         });
-
-        // Insira todos os modais no final do body
+    
+        // Insere todos os modais no final do body
         document.querySelector("body").insertAdjacentHTML("beforeend", modals);
     }
-
+    
     // Função para renderizar os botões de paginação
     function renderPagination() {
         const totalPages = Math.ceil(stockData.length / rowsPerPage);
@@ -194,20 +204,22 @@ document.addEventListener("DOMContentLoaded", function () {
         const form = document.querySelector(`#editStockForm${stockId}`);
         const formData = new FormData(form);
         const url = `/api/stocks/${stockId}/update/`;
-
+    
         try {
             const response = await fetch(url, {
                 method: "POST",
                 body: JSON.stringify({
                     quantity: formData.get("quantity"),
                     price: formData.get("price"),
+                    min_quantity: formData.get("min_quantity"),
+                    max_quantity: formData.get("max_quantity"),
                 }),
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCookie("csrftoken"),
                 },
             });
-
+    
             if (response.ok) {
                 alert("Estoque atualizado com sucesso!");
                 document.querySelector(`#stockModal${stockId}`).querySelector(".btn-close").click();

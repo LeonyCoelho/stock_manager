@@ -428,12 +428,23 @@ def update_stock(request, stock_id):
             new_quantity = data.get("quantity")
             if new_quantity is not None:
                 stock.quantity = new_quantity
-                stock.save()
+
             # Atualiza o preço 
             new_price = data.get("price")
             if new_price is not None:
                 stock.price = new_price
-                stock.save()
+
+            # Atualiza a quantidade mínima
+            new_min_quantity = data.get("min_quantity")
+            if new_min_quantity is not None:
+                stock.min_quantity = new_min_quantity
+
+            # Atualiza a quantidade máxima
+            new_max_quantity = data.get("max_quantity")
+            if new_max_quantity is not None:
+                stock.max_quantity = new_max_quantity
+
+            stock.save()
 
             return JsonResponse({"success": True, "message": "Estoque atualizado com sucesso."})
 
@@ -1071,14 +1082,16 @@ def get_all_stocks(request):
                 'quantity_per_package': produto.quantity_per_package,
                 'category': produto.category.name if produto.category else 'Sem categoria',
             },
-            'quantity': item.quantity,  # Quantidade pode ser negativa para indicar estoque negativo
-            'price': item.price,
-            'pending': item.pending,
-            'preco_por_kg': round(preco_por_kg, 2),  # Preço por kg
-            'total_folhas': int(produto.quantity_per_package) * abs(item.quantity),  # Total de folhas, sempre positivo
-            'peso_por_pacote': round(peso_pacote_kg, 2),  # Peso por pacote em kg
-            'peso_total': round(peso_total_kg, 2),  # Peso total
-            'preco_total': round(preco_total, 2),  # Preço total
+            'quantity': str(item.quantity),  # Convertido para string para evitar problemas de JSON
+            'price': str(item.price),
+            'pending': str(item.pending),
+            'preco_por_kg': str(round(preco_por_kg, 2)),
+            'total_folhas': str(int(produto.quantity_per_package) * abs(item.quantity)),
+            'peso_por_pacote': str(round(peso_pacote_kg, 2)),
+            'peso_total': str(round(peso_total_kg, 2)),
+            'preco_total': str(round(preco_total, 2)),
+            'min_quantity': str(item.min_quantity) if item.min_quantity is not None else "0.00",  # Adicionado
+            'max_quantity': str(item.max_quantity) if item.max_quantity is not None else "0.00",  # Adicionado
         })
 
     return JsonResponse({'stock': stock_list})
@@ -1098,17 +1111,20 @@ def api_stock(request):
             {
                 "id": stock.id,
                 "product_name": stock.product.name,
-                "quantity": stock.quantity,
-                "price": stock.price if stock.price else 0,
-                "preco_por_kg": stock.preco_por_kg,
-                "preco_total": stock.preco_total,
-                "peso_por_pacote": stock.peso_por_pacote,
-                "peso_total": stock.peso_total,
+                "quantity": float(stock.quantity),  # Garante que seja um número válido no JSON
+                "price": float(stock.price) if stock.price else 0,
+                "preco_por_kg": float(stock.preco_por_kg),
+                "preco_total": float(stock.preco_total),
+                "peso_por_pacote": float(stock.peso_por_pacote),
+                "peso_total": float(stock.peso_total),
+                "min_quantity": float(stock.min_quantity),  # Adiciona min_quantity
+                "max_quantity": float(stock.max_quantity),  # Adiciona max_quantity
             }
             for stock in stocks
         ]
     }
     return JsonResponse(data)
+
 
 def fetch_stock_data():
     response = requests.get("http://127.0.0.1:8000/api/stocks/")

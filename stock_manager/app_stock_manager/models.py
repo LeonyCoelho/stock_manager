@@ -69,9 +69,19 @@ class Stock(models.Model):
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     pending = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    min_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Valor mínimo
+    max_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Valor máximo
 
     def __str__(self):
         return f"{self.product.name} - {self.quantity}"
+
+    def get_stock_status(self):
+        if self.quantity < self.min_quantity:
+            return "low"  # Estoque baixo
+        elif self.quantity > self.max_quantity:
+            return "high"  # Estoque alto
+        return "normal"
+
 
 
 class Sale(models.Model):
