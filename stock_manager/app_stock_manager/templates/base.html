@@ -48,9 +48,11 @@
                   </a>
                   <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{% url 'settings' %}">Sistema</a></li>
+                    <li><a class="dropdown-item" href="{% url 'new_user' %}">Novo Usuário</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{% url 'change_password' %}">Perfil</a></li>
-                    <li><a class="dropdown-item" href="{% url 'logout' %}">Sair</a></li>
+                    {% if request.user.is_staff %}
+                    <li><a class="dropdown-item" href="{% url 'new_user' %}">Novo Usuário</a></li>
+                {% endif %}                    <li><a class="dropdown-item" href="{% url 'logout' %}">Sair</a></li>
                   </ul>
                 </li>
               </ul>
@@ -58,6 +60,32 @@
           </div>
         </div>
       </nav>
+      {% if messages %}
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        {% for message in messages %}
+            <div class="toast align-items-center text-white bg-{% if message.tags == 'error' %}danger{% else %}success{% endif %} border-0 show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        {{ message }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+        var toastList = toastElList.map(function(toastEl) {
+            return new bootstrap.Toast(toastEl, { delay: 3000 }); // Fecha em 3 segundos
+        });
+        toastList.forEach(toast => toast.show());
+    });
+</script>
+
 
       <main class="flex-shrink-0 mb-3">
     {% block content %}

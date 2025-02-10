@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+    <div class="container mt-5">
+        <div class="card shadow-sm p-4">
+            <h2 class="mb-4">Criar Novo Usuário</h2>
+
+            {% if messages %}
+                <div class="alert alert-info">
+                    {% for message in messages %}
+                        <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="username" class="form-label">Nome de Usuário</label>
+                    <input type="text" id="username" name="username" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Senha</label>
+                    <input type="password" id="password" name="password" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirmar Senha</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input type="checkbox" id="is_admin" name="is_admin" class="form-check-input">
+                    <label for="is_admin" class="form-check-label">Definir como Administrador</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Criar Usuário</button>
+                <a href="/" class="btn btn-secondary">Voltar</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

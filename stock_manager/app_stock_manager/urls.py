@@ -9,6 +9,7 @@ urlpatterns = [
     path("logout/", views.user_logout, name="logout"),
     path('change-password/', views.CustomPasswordChangeView.as_view(), name='change_password'),
     path('settings/', views.settings, name='settings'),
+    path('settings/new_user', views.new_user, name='new_user'),
     path('customers/new/', views.new_customer, name='new_customer'),
     path('customers/', views.view_customers, name='view_customers'),
     path('suppliers/new/', views.new_supplier, name='new_supplier'),
@@ -20,6 +21,7 @@ urlpatterns = [
     path('sales/new/', views.new_sale, name='new_sale'),
     path('purchases/', views.view_purchases, name='view_purchases'),
     path('purchases/new/', views.new_purchase, name='new_purchase'),
+
     # ========== POST API =====================================================
     path('add-customer/', views.add_customer, name='add_customer'),
     path('add-supplier/', views.add_supplier, name='add_supplier'),

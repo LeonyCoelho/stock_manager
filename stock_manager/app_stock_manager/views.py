@@ -34,6 +34,18 @@ from io import BytesIO
 from reportlab.lib.styles import getSampleStyleSheet
 
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from app_stock_manager.decorators import admin_required  # Importa o decorador personalizado
+
+
+
+
+# Função para verificar se o usuário é admin
+def is_admin(user):
+    return user.is_staff  # Somente usuários com is_staff=True podem acessar
 
 def user_login(request):
     if request.method == "POST":
@@ -67,6 +79,36 @@ def home(request):
 @login_required
 def settings(request):
     return render(request, 'pages/settings.html')
+
+@login_required
+@admin_required
+def new_user(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        confirm_password = request.POST.get("confirm_password")
+        is_admin = request.POST.get("is_admin") == "on"  # Verifica se a checkbox foi marcada
+
+        # Verifica se as senhas coincidem
+        if password != confirm_password:
+            messages.error(request, "As senhas não coincidem.")
+            return redirect("new_user")
+
+        # Verifica se o nome de usuário já existe
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Nome de usuário já existe.")
+            return redirect("new_user")
+
+        # Criar usuário
+        user = User.objects.create_user(username=username, password=password)
+        if is_admin:
+            user.is_staff = True  # Define como administrador
+            user.is_superuser = True  # Torna também superusuário, se necessário
+        user.save()
+
+        messages.success(request, "Usuário criado com sucesso!")
+        return redirect("new_user")
+    return render(request, 'pages/new_user.html')
 
 @login_required
 def view_customers(request):
@@ -1124,7 +1166,6 @@ def api_stock(request):
         ]
     }
     return JsonResponse(data)
-
 
 def fetch_stock_data():
     response = requests.get("http://127.0.0.1:8000/api/stocks/")
