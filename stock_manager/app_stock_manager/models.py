@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
+
 class Category(models.Model):
     name = models.CharField(max_length=255)
 
@@ -95,13 +96,22 @@ class Sale(models.Model):
     name = models.CharField(max_length=255)
     nfe = models.CharField(max_length=255, default='')
     created = models.DateTimeField(auto_now_add=True)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="sales")
+
+    customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales")  # ALTERADO
+    customer_name = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
     observations = models.TextField(blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        if self.customer and not self.customer_name:
+            self.customer_name = self.customer.name  # Salva o nome antes da exclusão
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Sale {self.id} - {self.name}"
+        return f"Sale {self.id} - {self.customer_name or 'Cliente Removido'}"
+
 
 
 class SaleProduct(models.Model):
@@ -128,13 +138,22 @@ class Purchase(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="purchases")
     name = models.CharField(max_length=255)
     created = models.DateTimeField(auto_now_add=True)
-    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name="purchases")
+
+    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchases")  # ALTERADO
+    supplier_name = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+
     invoice_number = models.CharField(max_length=50)
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
     observations = models.TextField(blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        if self.supplier and not self.supplier_name:
+            self.supplier_name = self.supplier.name  # Salva o nome antes da exclusão
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Purchase {self.id} - {self.name}"
+        return f"Purchase {self.id} - {self.supplier_name or 'Fornecedor Removido'}"
+
 
 
 class PurchaseProduct(models.Model):
@@ -146,3 +165,4 @@ class PurchaseProduct(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.quantity}"
     
+from .signals import *

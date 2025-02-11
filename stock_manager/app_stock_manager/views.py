@@ -1251,13 +1251,14 @@ def get_all_sales(request):
             "sale_id": sale.id,
             "sale_name": sale.name,
             "sale_created": sale.created,
-            "customer_name": sale.customer.name,
+            "customer_name": sale.customer.name if sale.customer else sale.customer_name,  # CORRIGIDO
             "full_price": float(sale.full_price),
             "products": sale_products,
             "nfe": sale.nfe,
         })
 
     return JsonResponse({"sales": sale_list})
+
 
 def get_all_purchases(request):
     purchases = Purchase.objects.all()
@@ -1279,7 +1280,7 @@ def get_all_purchases(request):
             "purchase_id": purchase.id,
             "purchase_name": purchase.name,
             "purchase_created": purchase.created,
-            "supplier_name": purchase.supplier.name,
+            "supplier_name": purchase.supplier.name if purchase.supplier else purchase.supplier_name,  # CORRIGIDO
             "full_price": float(purchase.full_price),
             "products": purchase_products,
         })
