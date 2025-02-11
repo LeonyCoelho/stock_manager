@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+<div class="container">
+        <div class="card mt-3">
+            <div class="card-header">
+                Editar Cliente
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'edit_customer' customer.id %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="mb-2 col-12">
+                            <label class="form-label">Nome:</label>
+                            <input class="form-control" name="name" type="text" id="name" value="{{ customer.name|default:'' }}" required />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col-2">
+                            <label class="form-label" for="cep">CEP</label>
+                            <input class="form-control" name="cep" type="text" id="cep" maxlength="9" value="{{ customer.cep|default:'' }}" onblur="pesquisacep(this.value);" />
+                        </div>
+                        <div class="mb-2 col-8">
+                            <label class="form-label">Rua</label>
+                            <input class="form-control" name="street" type="text" id="street" value="{{ customer.street|default:'' }}" />
+                        </div>
+                        <div class="mb-2 col-2">
+                            <label class="form-label">Número:</label>
+                            <input class="form-control" name="address_number" type="text" id="address_number" value="{{ customer.address_number|default:'' }}" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col">
+                            <label class="form-label">Bairro</label>
+                            <input class="form-control" name="district" type="text" id="district" value="{{ customer.district|default:'' }}" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">Estado</label>
+                            <input class="form-control" name="state" type="text" id="state" value="{{ customer.state|default:'' }}" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">Cidade</label>
+                            <input class="form-control" name="city" type="text" id="city" value="{{ customer.city|default:'' }}" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="mb-2 col">
+                            <label class="form-label">CPF ou CNPJ</label>
+                            <input class="form-control" name="cpf_or_cnpj" type="text" id="cpf_or_cnpj" value="{{ customer.cpf_or_cnpj|default:'' }}" />
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">É CNPJ?</label>
+                            <select class="form-control" name="is_cnpj" id="is_cnpj">
+                                <option value="false" {% if not customer.is_cnpj|default:'' %}selected{% endif %}>Não</option>
+                                <option value="true" {% if customer.is_cnpj|default:'' %}selected{% endif %}>Sim</option>
+                            </select>
+                        </div>
+                    </div>
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-control" name="observations" rows="4">{{ customer.observations|default:'' }}</textarea>
+                    <button type="submit" class="btn btn-primary mt-3">Salvar Alterações</button>
+                    <a class="btn btn-secondary mt-3" href="{% url 'view_customers' %}">Voltar</a>
+                </form>
+            </div>
+        </div>
+</div>
+{% endblock %}

@@ -11,9 +11,15 @@ urlpatterns = [
     path('settings/', views.settings, name='settings'),
     path('settings/new_user', views.new_user, name='new_user'),
     path('customers/new/', views.new_customer, name='new_customer'),
+    path("customer/edit/<int:customer_id>/", views.edit_customer, name="edit_customer"),
+    path("customer/delete/<int:customer_id>/", views.delete_customer, name="delete_customer"),
+
     path('customers/', views.view_customers, name='view_customers'),
     path('suppliers/new/', views.new_supplier, name='new_supplier'),
     path('suppliers/', views.view_suppliers, name='view_suppliers'),
+    path("supplier/edit/<int:supplier_id>/", views.edit_supplier, name="edit_supplier"),
+    path("supplier/delete/<int:supplier_id>/", views.delete_supplier, name="delete_supplier"),
+
     path('products/new/', views.new_product, name='new_product'),
     path('products/', views.view_products, name='view_products'),
     path('stocks/', views.view_stocks, name='view_stocks'),

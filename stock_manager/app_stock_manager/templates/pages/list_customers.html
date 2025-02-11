@@ -25,6 +25,7 @@
                         <th>Cidade</th>
                         <th>Estado</th>
                         <th>CEP</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,6 +37,25 @@
                     <!-- Botões de paginação gerados dinamicamente -->
                 </ul>
             </nav>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza que deseja excluir este cliente?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Deletar</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -82,6 +102,14 @@
                         <td>${customer.city}</td>
                         <td>${customer.state}</td>
                         <td>${customer.cep}</td>
+                        <td>
+                            <a href="/customer/edit/${customer.id}/" class="btn btn-sm btn-warning">
+                                <i class="nf nf-fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDelete(${customer.id})">
+                                <i class="nf nf-fa-trash"></i>
+                            </button>
+                        </td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML("beforeend", row);
@@ -132,10 +160,24 @@
                 });
             });
         }
+        
 
         // Inicializa a tabela
         fetchCustomers();
     });
+</script>
+<script>
+    function confirmDelete(customerId) {
+        const deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"));
+        
+        // Define a ação do botão "Deletar"
+        document.getElementById("confirmDeleteBtn").onclick = function () {
+            window.location.href = `/customer/delete/${customerId}/`;
+        };
+
+        // Exibe o modal
+        deleteModal.show();
+    }
 </script>
 
 {% endblock %}

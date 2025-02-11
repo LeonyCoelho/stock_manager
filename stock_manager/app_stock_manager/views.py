@@ -118,6 +118,35 @@ def view_customers(request):
 def new_customer(request):
     return render(request, 'pages/new_customer.html')
 
+
+@login_required
+def edit_customer(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+
+    if request.method == "POST":
+        customer.name = request.POST.get("name")
+        customer.cep = request.POST.get("cep")
+        customer.street = request.POST.get("street")
+        customer.address_number = request.POST.get("address_number")
+        customer.district = request.POST.get("district")
+        customer.state = request.POST.get("state")
+        customer.city = request.POST.get("city")
+        customer.cpf_or_cnpj = request.POST.get("cpf_or_cnpj")
+        customer.is_cnpj = request.POST.get("is_cnpj") == "true"
+        customer.observations = request.POST.get("observations")
+
+        customer.save()
+        messages.success(request, "Cliente atualizado com sucesso!")
+        return redirect("view_customers")  # Página que lista os clientes
+
+    return render(request, "pages/edit_customer.html", {"customer": customer})
+
+@login_required
+def delete_customer(request, customer_id):
+    customer = get_object_or_404(Customer, id=customer_id)
+    customer.delete()
+    return redirect("view_customers")  # Redireciona para a lista de clientes
+
 @login_required
 def view_suppliers(request):
     return render(request, 'pages/list_suppliers.html')
@@ -125,6 +154,34 @@ def view_suppliers(request):
 @login_required
 def new_supplier(request):
     return render(request, 'pages/new_supplier.html')
+
+@login_required
+def edit_supplier(request, supplier_id):
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+
+    if request.method == "POST":
+        supplier.name = request.POST.get("name")
+        supplier.cep = request.POST.get("cep")
+        supplier.street = request.POST.get("street")
+        supplier.address_number = request.POST.get("address_number")
+        supplier.district = request.POST.get("district")
+        supplier.state = request.POST.get("state")
+        supplier.city = request.POST.get("city")
+        supplier.cpf_or_cnpj = request.POST.get("cpf_or_cnpj")
+        supplier.is_cnpj = request.POST.get("is_cnpj") == "true"
+        supplier.observations = request.POST.get("observations")
+
+        supplier.save()
+        messages.success(request, "Cliente atualizado com sucesso!")
+        return redirect("view_suppliers")  # Página que lista os clientes
+
+    return render(request, "pages/edit_supplier.html", {"supplier": supplier})
+
+@login_required
+def delete_supplier(request, supplier_id):
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+    supplier.delete()
+    return redirect("view_suppliers")  # Redireciona para a lista de clientes
 
 @login_required
 def view_products(request):
