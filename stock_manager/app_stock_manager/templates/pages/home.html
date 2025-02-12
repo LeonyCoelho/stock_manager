@@ -37,6 +37,7 @@
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Venda</th>
                                 <th>Data</th>
                                 <th>Boletos</th>
@@ -65,6 +66,7 @@
                 <table class="table table-bordered table-striped">
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Produto</th>
                             <th>Categoria</th>
                             <th>Quantidade</th>
@@ -80,7 +82,6 @@
     </div>
      
      <!-- ================== CARDS DE RESUMO ===================================== -->
-     
      <div class="mb-3">
         <div class="row">
             <!-- Card de Estoque Baixo -->
@@ -88,9 +89,11 @@
                 <div class="card border-danger">
                     <div class="card-header bg-danger text-white">🔴 Estoque Baixo</div>
                     <div class="card-body">
-                        <ul id="low-stock-list" class="list-group">
-                            <li class="list-group-item text-muted">Carregando...</li>
-                        </ul>
+                        <div class="stock-list-container">
+                            <ul id="low-stock-list" class="list-group">
+                                <li class="list-group-item text-muted">Carregando...</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,9 +103,11 @@
                 <div class="card border-primary">
                     <div class="card-header bg-primary text-white">🔵 Estoque Alto</div>
                     <div class="card-body">
-                        <ul id="high-stock-list" class="list-group">
-                            <li class="list-group-item text-muted">Carregando...</li>
-                        </ul>
+                        <div class="stock-list-container">
+                            <ul id="high-stock-list" class="list-group">
+                                <li class="list-group-item text-muted">Carregando...</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -149,6 +154,7 @@
     </div>
 
     <!-- ==================== TABELAS DE ULTIMAS MOVIMENTACOES =================== -->
+    
     <div class="row">
         <!-- Últimas 10 Vendas -->
         <div class="col-md-6">
@@ -158,8 +164,8 @@
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Venda</th>
-                                <th>Cliente</th>
                                 <th>Data</th>
                                 <th>Total (R$)</th>
                             </tr>
@@ -181,8 +187,8 @@
                     <table class="table table-bordered table-striped">
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Compra</th>
-                                <th>Fornecedor</th>
                                 <th>Data</th>
                                 <th>Total (R$)</th>
                             </tr>
@@ -255,8 +261,9 @@ document.addEventListener("DOMContentLoaded", async function () {
         const salesTableBody = document.querySelector("#latestSales");
         salesTableBody.innerHTML = (dataSale.sales || []).map((sale) => `
             <tr>
+                <td>${sale.sale_id || "N/A"}</td>
                 <td>${sale.sale_name || "N/A"}</td>
-                <td>${sale.customer_name || "N/A"}</td>
+                <td>${sale.sale_name || "N/A"}</td>
                 <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
             </tr>
@@ -267,8 +274,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         const purchasesTableBody = document.querySelector("#latestPurchases");
         purchasesTableBody.innerHTML = (dataPurchase.purchases || []).map((purchase) => `
             <tr>
+                <td>${purchase.purchase_id || "N/A"}</td>
                 <td>${purchase.purchase_name || "N/A"}</td>
-                <td>${purchase.supplier_name || "N/A"}</td>
                 <td>${purchase.purchase_created ? new Date(purchase.purchase_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(purchase.full_price || 0).toFixed(2)}</td>
             </tr>
@@ -317,6 +324,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!vendasMap.has(venda.venda_id)) {
                 vendasMap.set(venda.venda_id, {
+                    venda_id: venda.venda_id,
                     nome: venda.nome,
                     data_venda: venda.data_venda,
                     valor_total: parseFloat(venda.valor_total.replace("R$", "").trim()) || 0,
@@ -340,6 +348,7 @@ document.addEventListener("DOMContentLoaded", function () {
         vendasMap.forEach((vendaData, vendaId) => {
             const row = `
                 <tr>
+                    <td>${vendaData.venda_id}</td>
                     <td>${vendaData.nome}</td>
                     <td>${vendaData.data_venda}</td>
                     <td>${vendaData.total_boletos_pendentes}</td>
@@ -366,6 +375,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
+                                            <th>ID</th>
                                             <th>Vencimento</th>
                                             <th>Valor</th>
                                             <th>Status</th>
@@ -379,6 +389,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                             return `
                                                 <tr>
+                                                    <td>${boleto.boleto_id}</td>
                                                     <td>${boleto.data_vencimento}</td>
                                                     <td>R$ ${valor}</td>
                                                     <td>${status}</td>
@@ -521,6 +532,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         data.negative_stocks.forEach(stock => {
                             const row = `
                                 <tr>
+                                    <td>${stock.product_id}</td>
                                     <td>${stock.product_name}</td>
                                     <td>${stock.category}</td>
                                     <td>${stock.quantity}</td>
@@ -578,6 +590,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         lowStockCount++;
                         lowStockList.insertAdjacentHTML("beforeend", `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${stock.product.id} - 
                                 ${stock.product.name}
                                 <span class="badge bg-danger">${quantity} / ${minQuantity}</span>
                             </li>
@@ -586,6 +599,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         highStockCount++;
                         highStockList.insertAdjacentHTML("beforeend", `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${stock.product.id} - 
                                 ${stock.product.name}
                                 <span class="badge bg-primary">${quantity} / ${maxQuantity}</span>
                             </li>

@@ -448,6 +448,21 @@ def add_sale(request):
 
 @csrf_exempt
 @login_required
+def delete_sale(request, sale_id):
+    sale = get_object_or_404(Sale, id=sale_id)
+
+    # Reembolsar o estoque
+    for sale_product in sale.sale_products.all():
+        stock, created = Stock.objects.get_or_create(product=sale_product.product)
+        stock.quantity += sale_product.quantity  # Devolve a quantidade vendida ao estoque
+        stock.save()
+
+    sale.delete()
+    messages.success(request, "Venda deletada e estoque reembolsado com sucesso.")
+    return redirect("view_sales")  # Redireciona para a lista de vendas
+
+@csrf_exempt
+@login_required
 def add_purchase(request):
     if request.method == "POST":
         try:
@@ -514,6 +529,29 @@ def add_purchase(request):
             return JsonResponse({"success": False, "message": str(e)}, status=400)
 
     return JsonResponse({"success": False, "message": "Método não permitido."}, status=405)
+
+@csrf_exempt
+@login_required
+def delete_purchase(request, purchase_id):
+    purchase = get_object_or_404(Purchase, id=purchase_id)
+
+    for purchase_product in purchase.purchase_products.all():
+        stock, created = Stock.objects.get_or_create(product=purchase_product.product)
+        
+        # Calcula o total já vendido desse produto
+        total_sold = sum(sp.quantity for sp in purchase_product.product.sale_products.all())
+
+        # Define a nova quantidade do estoque
+        new_quantity = stock.quantity - purchase_product.quantity
+
+        # Garante que o estoque nunca fique menor que o total vendido
+        stock.quantity = max(new_quantity, -total_sold)  
+        stock.save()
+
+    purchase.delete()
+    messages.success(request, "Compra deletada e estoque ajustado corretamente.")
+    return redirect("view_purchases")
+
 
 @csrf_exempt
 @login_required
@@ -1326,10 +1364,11 @@ def get_latest_sales(request):
     data = {
         'sales': [
             {
+                'sale_id': sale.id,
                 'sale_name': sale.name,
-                'customer_name': sale.customer.name,
+                'customer_name': sale.customer.name if sale.customer else sale.customer_name,  # CORRIGIDO
                 'sale_created': sale.created,
-                'full_price': sale.full_price,
+                'full_price': float(sale.full_price),
             }
             for sale in sales
         ]
@@ -1341,15 +1380,17 @@ def get_latest_purchases(request):
     data = {
         'purchases': [
             {
+                'purchase_id': purchase.id,
                 'purchase_name': purchase.name,
-                'supplier_name': purchase.supplier.name,
+                'supplier_name': purchase.supplier.name if purchase.supplier else purchase.supplier_name,  # CORRIGIDO
                 'purchase_created': purchase.created,
-                'full_price': purchase.full_price,
+                'full_price': float(purchase.full_price),
             }
             for purchase in purchases
         ]
     }
     return JsonResponse(data)
+
 
 def get_boletos_pendentes(request):
     # Filtrar apenas os boletos com status "Pendente"
@@ -1396,6 +1437,7 @@ def get_negative_stocks(request):
     for stock in negative_stocks:
         product = stock.product
         stock_list.append({
+            'product_id': product.id,
             'product_name': product.name,
             'category': product.category.name if product.category else "Sem categoria",
             'quantity': float(stock.quantity),  # Convertendo para evitar problemas com JSON

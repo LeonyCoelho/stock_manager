@@ -25,8 +25,10 @@ urlpatterns = [
     path('stocks/', views.view_stocks, name='view_stocks'),
     path('sales/', views.view_sales, name='view_sales'),
     path('sales/new/', views.new_sale, name='new_sale'),
+    path("sale/delete/<int:sale_id>/", views.delete_sale, name="delete_sale"),
     path('purchases/', views.view_purchases, name='view_purchases'),
     path('purchases/new/', views.new_purchase, name='new_purchase'),
+    path("purchase/delete/<int:purchase_id>/", views.delete_purchase, name="delete_purchase"),
 
     # ========== POST API =====================================================
     path('add-customer/', views.add_customer, name='add_customer'),

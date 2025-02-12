@@ -74,7 +74,7 @@
                 <td>${start + index + 1}</td>
                 <td>${purchase.purchase_name}</td>
                 <td>${purchase.supplier_name}</td>
-                                <td>${new Date(purchase.purchase_created).toLocaleString('pt-BR', {
+                <td>${new Date(purchase.purchase_created).toLocaleString('pt-BR', {
                     day: '2-digit',
                     month: '2-digit',
                     year: 'numeric',
@@ -86,8 +86,30 @@
                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal${purchase.purchase_id}">
                         Detalhes
                     </button>
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deletePurchaseModal${purchase.purchase_id}">
+                        <i class="nf nf-fa-trash"></i>
+                    </button>
                 </td>
             </tr>
+
+            <!-- Modal de Confirmação para Deletar -->
+            <div class="modal fade" id="deletePurchaseModal${purchase.purchase_id}" tabindex="-1" aria-labelledby="deletePurchaseLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirmar Exclusão</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            Tem certeza que deseja excluir esta compra?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <a href="/purchase/delete/${purchase.purchase_id}/" class="btn btn-danger">Deletar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
         tableBody.insertAdjacentHTML("beforeend", row);
 

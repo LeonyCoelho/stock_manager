@@ -3,3 +3,15 @@
 body{
   background-color: rgb(202, 205, 209);
 }
+
+#product-table-container {
+  max-height: 400px; /* Altura máxima */
+  overflow-y: auto;  /* Adiciona barra de rolagem vertical */
+}
+
+.stock-list-container {
+  max-height: 200px; /* Define altura máxima */
+  overflow-y: auto;  /* Ativa a rolagem vertical */
+  padding: 0;        /* Remove padding extra */
+  margin: 0;         /* Remove margem extra */
+}

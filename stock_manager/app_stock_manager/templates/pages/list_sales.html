@@ -83,14 +83,35 @@
                     hour: '2-digit',
                     minute: '2-digit'
                 })}</td>
-
                 <td>R$${sale.full_price.toFixed(2)}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal${sale.sale_id}">
                         Detalhes
                     </button>
+                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteSaleModal${sale.sale_id}">
+                        <i class="nf nf-fa-trash"></i>
+                    </button>
                 </td>
             </tr>
+
+            <!-- Modal de Confirmação para Deletar -->
+            <div class="modal fade" id="deleteSaleModal${sale.sale_id}" tabindex="-1" aria-labelledby="deleteSaleLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirmar Exclusão</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body">
+                            Tem certeza que deseja excluir esta venda?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <a href="/sale/delete/${sale.sale_id}/" class="btn btn-danger">Deletar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
         tableBody.insertAdjacentHTML("beforeend", row);
 
