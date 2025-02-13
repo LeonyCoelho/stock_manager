@@ -155,10 +155,11 @@
 
     <!-- ==================== TABELAS DE ULTIMAS MOVIMENTACOES =================== -->
     
-    <div class="row">
-        <!-- Últimas 10 Vendas -->
-        <div class="col-md-6">
-            <div class="card mb-3">
+    <div class="card-deck">
+        <div class="row">
+            <div class="col-6 mb-3">
+
+                <div class="card">
                 <div class="card-header">Últimas 10 Vendas</div>
                 <div class="card-body">
                     <table class="table table-bordered table-striped">
@@ -176,31 +177,34 @@
                     </table>
                     <a class="btn btn-secondary" href="{% url 'view_sales' %}">Ver mais</a>
                 </div>
-            </div>
-        </div>
+                </div>
 
-        <!-- Últimas 10 Compras -->
-        <div class="col-md-6">
-            <div class="card mb-3">
-                <div class="card-header">Últimas 10 Compras</div>
-                <div class="card-body">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Compra</th>
-                                <th>Data</th>
-                                <th>Total (R$)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="latestPurchases">
-                            <!-- Dados inseridos via JavaScript -->
-                        </tbody>
-                    </table>
-                    <a class="btn btn-secondary" href="{% url 'view_purchases' %}">Ver mais</a>
-                    
+            </div>
+
+            <div class="col-6 mb-3">
+                <div class="card">
+                    <div class="card-header">Últimas 10 Compras</div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Compra</th>
+                                    <th>Data</th>
+                                    <th>Total (R$)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="latestPurchases">
+                                <!-- Dados inseridos via JavaScript -->
+                            </tbody>
+                        </table>
+                        <a class="btn btn-secondary" href="{% url 'view_purchases' %}">Ver mais</a>
+                        
+                    </div>
                 </div>
             </div>
+        
+        
         </div>
     </div>
 
@@ -262,7 +266,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         salesTableBody.innerHTML = (dataSale.sales || []).map((sale) => `
             <tr>
                 <td>${sale.sale_id || "N/A"}</td>
-                <td>${sale.sale_name || "N/A"}</td>
                 <td>${sale.sale_name || "N/A"}</td>
                 <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
                 <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
