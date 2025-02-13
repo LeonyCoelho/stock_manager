@@ -117,13 +117,17 @@
 
         // Cria a lista de produtos
         const productList = sale.products
-            .map(product => `
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    ${product.product_id} - 
+        .map(product => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    ${product.product_id ? `${product.product_id} - ` : ""}
                     ${product.product_name}
-                    <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
-                </li>
-            `)
+                    ${!product.product_id ? `<span class="badge bg-danger ms-2">Removido</span>` : ""}
+                </span>
+                <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
+            </li>
+        `)
+    
             .join("");
 
         // Armazena o modal para renderizar após o loop

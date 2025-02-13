@@ -1133,14 +1133,19 @@ def get_all_suppliers(request):
     return JsonResponse({'suppliers': supplier_list})
 
 def get_all_products(request):
+    query = request.GET.get("search", "").strip()
+    
     products = Product.objects.all()
+    
+    if query:
+        products = products.filter(Q(name__icontains=query))
+    
     product_list = [{
         'id': product.id,
         'name': product.name,
         'weight': product.weight,
         'unit_type': product.get_unit_type_display(),
         'size': product.size,
-        # 'category': product.category.name,
         'quantity_per_package': product.quantity_per_package,
     } for product in products]
 
@@ -1276,8 +1281,8 @@ def get_all_sales(request):
     for sale in sales:
         sale_products = [
             {
-                "product_id": sale_product.product.id,
-                "product_name": sale_product.product.name,
+                "product_id": sale_product.product.id if sale_product.product else None,
+                "product_name": sale_product.product.name if sale_product.product else sale_product.product_info,  # CORRIGIDO
                 "quantity": float(sale_product.quantity),
                 "price": float(sale_product.price),
                 "total_price": float(sale_product.quantity * sale_product.price),
@@ -1289,13 +1294,14 @@ def get_all_sales(request):
             "sale_id": sale.id,
             "sale_name": sale.name,
             "sale_created": sale.created,
-            "customer_name": sale.customer.name if sale.customer else sale.customer_name,  # CORRIGIDO
+            "customer_name": sale.customer.name if sale.customer else sale.customer_name,
             "full_price": float(sale.full_price),
             "products": sale_products,
             "nfe": sale.nfe,
         })
 
     return JsonResponse({"sales": sale_list})
+
 
 
 def get_all_purchases(request):
@@ -1305,8 +1311,8 @@ def get_all_purchases(request):
     for purchase in purchases:
         purchase_products = [
             {
-                "product_id": purchase_product.product.id,
-                "product_name": purchase_product.product.name,
+                "product_id": purchase_product.product.id if purchase_product.product else None,
+                "product_name": purchase_product.product.name if purchase_product.product else purchase_product.product_info,  # CORRIGIDO
                 "quantity": float(purchase_product.quantity),
                 "price": float(purchase_product.price),
                 "total_price": float(purchase_product.quantity * purchase_product.price),
@@ -1324,6 +1330,7 @@ def get_all_purchases(request):
         })
 
     return JsonResponse({"purchases": purchase_list})
+
 
 def get_summary(request):
     today = now().date()

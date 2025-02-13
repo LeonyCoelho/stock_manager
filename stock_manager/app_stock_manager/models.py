@@ -116,12 +116,19 @@ class Sale(models.Model):
 
 class SaleProduct(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="sale_products")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="sale_products")
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="sale_products")
+    product_info = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
+    def save(self, *args, **kwargs):
+        if self.product and not self.product_info:
+            self.product_info = f"{self.product.id} - {self.product.name}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.product.name} - {self.quantity}"
+        return f"{self.product_info or 'Produto Removido'} - {self.quantity}"
+
 
 
 class Boleto(models.Model):
@@ -158,11 +165,18 @@ class Purchase(models.Model):
 
 class PurchaseProduct(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="purchase_products")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="purchase_products")
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_products")
+    product_info = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
+    def save(self, *args, **kwargs):
+        if self.product and not self.product_info:
+            self.product_info = f"{self.product.id} - {self.product.name}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.product.name} - {self.quantity}"
+        return f"{self.product_info or 'Produto Removido'} - {self.quantity}"
+
     
 from .signals import *
