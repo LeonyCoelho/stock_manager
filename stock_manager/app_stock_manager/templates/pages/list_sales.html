@@ -5,10 +5,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>Todas as Vendas</span>
             <span class="d-flex justify-content-between align-items-center">
-                <div class="input-group">
-                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
-                </div>
+                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Pesquisar vendas" aria-label="Pesquisar">
                 <a href="{% url 'new_sale' %}" class="btn btn-primary btn-sm ms-3">Novo</a>
             </span>
         </div>        
@@ -255,6 +252,187 @@
         // Inicializa a tabela
         fetchCustomers();
     });
+</script>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/sales/";
+        const rowsPerPage = 20;
+        let currentPage = 1;
+        let salesData = [];
+        let filteredSales = [];
+    
+        async function fetchSales(searchQuery = "") {
+            try {
+                let url = apiUrl;
+                if (searchQuery.trim() !== "") {
+                    url += `?search=${encodeURIComponent(searchQuery)}`;
+                }
+    
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Erro ao buscar dados da API");
+    
+                const data = await response.json();
+                salesData = data.sales || [];
+    
+                filteredSales = [...salesData]; // Garante que a lista filtrada sempre tenha os dados carregados
+                currentPage = 1; // Reseta para a primeira página
+                renderTable();
+                renderPagination();
+            } catch (error) {
+                console.error("Erro ao buscar vendas:", error);
+            }
+        }
+    
+        function renderTable() {
+            const tableBody = document.querySelector("#sale-table tbody");
+            tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+    
+            if (filteredSales.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center">Nenhuma venda encontrada.</td></tr>`;
+                return;
+            }
+    
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = filteredSales.slice(start, end);
+    
+            let modals = ""; // Variável para armazenar os modais antes de inseri-los
+    
+            pageData.forEach((sale, index) => {
+                const row = `
+                    <tr>
+                        <td>${start + index + 1}</td>
+                        <td>${sale.sale_name}</td>
+                        <td>${sale.nfe}</td>
+                        <td>${sale.customer_name}</td>
+                        <td>${new Date(sale.sale_created).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}</td>
+                        <td>R$${sale.full_price.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal${sale.sale_id}">
+                                Detalhes
+                            </button>
+                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteSaleModal${sale.sale_id}">
+                                <i class="nf nf-fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+    
+                tableBody.insertAdjacentHTML("beforeend", row);
+    
+                // Criar lista de produtos
+                const productList = sale.products
+                    .map(product => `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                ${product.product_id ? `${product.product_id} - ` : ""}
+                                ${product.product_name}
+                                ${!product.product_id ? `<span class="badge bg-danger ms-2">Removido</span>` : ""}
+                            </span>
+                            <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
+                        </li>
+                    `)
+                    .join("");
+    
+                // Modais de detalhes
+                modals += `
+                    <div class="modal fade" id="saleModal${sale.sale_id}" tabindex="-1" aria-labelledby="detailsModalLabel${sale.sale_id}" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="detailsModalLabel${sale.sale_id}">Detalhes da Venda</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <h5>Cliente: ${sale.customer_name}</h5>
+                                    <h5>Data: ${new Date(sale.sale_created).toLocaleString()}</h5>
+                                    <h5>Valor Total: R$${sale.full_price.toFixed(2)}</h5>
+                                    <hr>
+                                    <h6>Produtos:</h6>
+                                    <ul class="list-group">
+                                        ${productList}
+                                    </ul>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+    
+            document.querySelectorAll(".modal").forEach(modal => modal.remove());
+            document.querySelector("body").insertAdjacentHTML("beforeend", modals);
+        }
+    
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredSales.length / rowsPerPage);
+            const pagination = document.querySelector("#pagination");
+            pagination.innerHTML = "";
+    
+            if (totalPages <= 1) return;
+    
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
+                </li>`
+            );
+    
+            for (let i = 1; i <= totalPages; i++) {
+                pagination.insertAdjacentHTML(
+                    "beforeend",
+                    `<li class="page-item ${i === currentPage ? "active" : ""}">
+                        <button class="page-link" data-page="${i}">${i}</button>
+                    </li>`
+                );
+            }
+    
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
+                </li>`
+            );
+    
+            document.querySelectorAll("#pagination .page-link").forEach((button) => {
+                button.addEventListener("click", function () {
+                    const page = parseInt(this.dataset.page, 10);
+                    if (!isNaN(page) && page > 0 && page <= totalPages) {
+                        currentPage = page;
+                        renderTable();
+                        renderPagination();
+                    }
+                });
+            });
+        }
+    
+        // Garante que o campo de busca existe antes de adicionar o event listener
+        const searchInput = document.querySelector("#searchInput");
+    
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                const searchText = this.value.trim();
+                fetchSales(searchText);
+            });
+        } else {
+            console.error("Elemento #searchInput não encontrado!");
+        }
+    
+        fetchSales();
+    });
+    
+    
+
 </script>
 
 {% endblock %}

@@ -1254,14 +1254,24 @@ def fetch_stock_data():
         return []
 
 def get_all_sales(request):
+    query = request.GET.get("search", "").strip()
+
     sales = Sale.objects.all()
+
+    if query:
+        sales = sales.filter(
+            Q(name__icontains=query) |  # Busca pelo nome da venda
+            Q(customer__name__icontains=query) |  # Busca pelo nome do cliente
+            Q(nfe__icontains=query)  # Busca pelo número do pedido
+        )
+
     sale_list = []
 
     for sale in sales:
         sale_products = [
             {
                 "product_id": sale_product.product.id if sale_product.product else None,
-                "product_name": sale_product.product.name if sale_product.product else sale_product.product_info,  # CORRIGIDO
+                "product_name": sale_product.product.name if sale_product.product else sale_product.product_info,
                 "quantity": float(sale_product.quantity),
                 "price": float(sale_product.price),
                 "total_price": float(sale_product.quantity * sale_product.price),
