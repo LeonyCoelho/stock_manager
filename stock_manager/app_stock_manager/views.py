@@ -40,6 +40,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from app_stock_manager.decorators import admin_required  # Importa o decorador personalizado
 
+from django.db.models import Q
 
 
 
@@ -1183,60 +1184,38 @@ def get_unit_types(request):
     return JsonResponse({"unit_types": unit_types})
 
 def get_all_stocks(request):
-    category_id = request.GET.get('category')  # Filtro de categoria
+    query = request.GET.get("search", "").strip()
 
-    if category_id:
-        try:
-            categoria = Category.objects.get(id=category_id)  # Obtém a categoria pelo ID
-            stock_items = Stock.objects.filter(product__category=categoria).select_related('product')
-        except Category.DoesNotExist:
-            return JsonResponse({"error": "Categoria não encontrada"}, status=400)
-    else:
-        stock_items = Stock.objects.all().select_related('product')  # Sem filtro, retorna todos os produtos
+    stocks = Stock.objects.select_related("product").all()
+
+    if query:
+        stocks = stocks.filter(Q(product__name__icontains=query))  # Filtra pelo nome do produto
 
     stock_list = []
-    for item in stock_items:
-        produto = item.product
 
-        # Cálculo do peso do pacote
-        largura, altura = map(int, produto.size.split("x"))
-        area = (Decimal(largura) / 100) * (Decimal(altura) / 100)  # Área em m², convertido para Decimal
-        peso_pacote_g = Decimal(produto.weight) * area * Decimal(produto.quantity_per_package)  # Peso do pacote em gramas
-        peso_pacote_kg = peso_pacote_g / Decimal(1000)  # Peso do pacote em kg
-
-        # Preço por kg (sem valores negativos)
-        preco_por_kg = item.price / peso_pacote_kg if peso_pacote_kg > 0 else Decimal(0)
-
-        # Peso total (kg), sempre positivo
-        peso_total_kg = abs(peso_pacote_kg * Decimal(item.quantity))
-
-        # Preço total, sempre positivo
-        preco_total = abs(item.price * Decimal(item.quantity))
+    for stock in stocks:
+        price = float(stock.price) if stock.price else 0.0
+        quantity = float(stock.quantity) if stock.quantity else 0.0  # Converte para float
+        peso_por_pacote = float(getattr(stock, "peso_por_pacote", 0.0))  # Converte para float
+        preco_por_kg = float(stock.preco_por_kg) if hasattr(stock, "preco_por_kg") else (price / peso_por_pacote if peso_por_pacote else 0.0)
+        peso_total = peso_por_pacote * quantity  # Ambos são float agora
+        preco_total = price * quantity  # Ambos são float agora
 
         stock_list.append({
-            'id': item.id,
-            'product': {
-                'id': produto.id,
-                'name': produto.name,
-                'weight': produto.weight,
-                'size': produto.size,
-                'unit_type': produto.unit_type,
-                'quantity_per_package': produto.quantity_per_package,
-                'category': produto.category.name if produto.category else 'Sem categoria',
-            },
-            'quantity': str(item.quantity),  # Convertido para string para evitar problemas de JSON
-            'price': str(item.price),
-            'pending': str(item.pending),
-            'preco_por_kg': str(round(preco_por_kg, 2)),
-            'total_folhas': str(int(produto.quantity_per_package) * abs(item.quantity)),
-            'peso_por_pacote': str(round(peso_pacote_kg, 2)),
-            'peso_total': str(round(peso_total_kg, 2)),
-            'preco_total': str(round(preco_total, 2)),
-            'min_quantity': str(item.min_quantity) if item.min_quantity is not None else "0.00",  # Adicionado
-            'max_quantity': str(item.max_quantity) if item.max_quantity is not None else "0.00",  # Adicionado
+            "id": stock.id,
+            "product_id": stock.product.id if stock.product else None,
+            "product_name": stock.product.name if stock.product else "Produto Removido",
+            "quantity": quantity,
+            "price": price,
+            "preco_por_kg": preco_por_kg,
+            "peso_por_pacote": peso_por_pacote,
+            "peso_total": peso_total,
+            "preco_total": preco_total,
+            "min_quantity": float(stock.min_quantity) if stock.min_quantity else 0.0,
+            "max_quantity": float(stock.max_quantity) if stock.max_quantity else 0.0,
         })
 
-    return JsonResponse({'stock': stock_list})
+    return JsonResponse({"stocks": stock_list})
 
 def api_stock(request):
     query = request.GET.get('search', '')
@@ -1302,8 +1281,6 @@ def get_all_sales(request):
 
     return JsonResponse({"sales": sale_list})
 
-
-
 def get_all_purchases(request):
     purchases = Purchase.objects.all()
     purchase_list = []
@@ -1330,7 +1307,6 @@ def get_all_purchases(request):
         })
 
     return JsonResponse({"purchases": purchase_list})
-
 
 def get_summary(request):
     today = now().date()
@@ -1397,7 +1373,6 @@ def get_latest_purchases(request):
         ]
     }
     return JsonResponse(data)
-
 
 def get_boletos_pendentes(request):
     # Filtrar apenas os boletos com status "Pendente"
