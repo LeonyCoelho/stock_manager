@@ -180,4 +180,134 @@
     }
 </script>
 
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/customers/";
+        const rowsPerPage = 20;
+        let currentPage = 1;
+        let customerData = [];
+        let filteredCustomers = [];
+    
+        async function fetchCustomers(searchQuery = "") {
+            try {
+                let url = apiUrl;
+                if (searchQuery.trim() !== "") {
+                    url += `?search=${encodeURIComponent(searchQuery)}`;
+                }
+    
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Erro ao buscar dados da API");
+    
+                const data = await response.json();
+                customerData = data.customers || [];
+    
+                filteredCustomers = [...customerData]; // Garante que a lista filtrada sempre tenha os dados carregados
+                currentPage = 1; // Reseta para a primeira página
+                renderTable();
+                renderPagination();
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+    
+        function renderTable() {
+            const tableBody = document.querySelector("#customer-table tbody");
+            tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+    
+            if (filteredCustomers.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="10" class="text-center">Nenhum cliente encontrado.</td></tr>`;
+                return;
+            }
+    
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = filteredCustomers.slice(start, end);
+    
+            pageData.forEach((customer, index) => {
+                const row = `
+                    <tr>
+                        <td>${start + index + 1}</td>
+                        <td>${customer.name}</td>
+                        <td>${customer.cpf_or_cnpj}</td>
+                        <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>
+                        <td>${customer.street}, ${customer.address_number}</td>
+                        <td>${customer.district}</td>
+                        <td>${customer.city}</td>
+                        <td>${customer.state}</td>
+                        <td>${customer.cep}</td>
+                        <td>
+                            <a href="/customer/edit/${customer.id}/" class="btn btn-sm btn-warning">
+                                <i class="nf nf-fa-edit"></i>
+                            </a>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDelete(${customer.id})">
+                                <i class="nf nf-fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML("beforeend", row);
+            });
+        }
+    
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredCustomers.length / rowsPerPage);
+            const pagination = document.querySelector("#pagination");
+            pagination.innerHTML = "";
+    
+            if (totalPages <= 1) return;
+    
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
+                </li>`
+            );
+    
+            for (let i = 1; i <= totalPages; i++) {
+                pagination.insertAdjacentHTML(
+                    "beforeend",
+                    `<li class="page-item ${i === currentPage ? "active" : ""}">
+                        <button class="page-link" data-page="${i}">${i}</button>
+                    </li>`
+                );
+            }
+    
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
+                </li>`
+            );
+    
+            document.querySelectorAll("#pagination .page-link").forEach((button) => {
+                button.addEventListener("click", function () {
+                    const page = parseInt(this.dataset.page, 10);
+                    if (!isNaN(page) && page > 0 && page <= totalPages) {
+                        currentPage = page;
+                        renderTable();
+                        renderPagination();
+                    }
+                });
+            });
+        }
+    
+        // Garante que o campo de busca existe antes de adicionar o event listener
+        const searchInput = document.querySelector(".input-group input");
+    
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                const searchText = this.value.trim();
+                fetchCustomers(searchText);
+            });
+        } else {
+            console.error("Campo de busca não encontrado!");
+        }
+    
+        fetchCustomers();
+    });
+    
+
+</script>
+
 {% endblock %}

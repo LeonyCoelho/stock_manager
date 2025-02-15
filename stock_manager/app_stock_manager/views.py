@@ -119,7 +119,6 @@ def view_customers(request):
 def new_customer(request):
     return render(request, 'pages/new_customer.html')
 
-
 @login_required
 def edit_customer(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
@@ -552,7 +551,6 @@ def delete_purchase(request, purchase_id):
     purchase.delete()
     messages.success(request, "Compra deletada e estoque ajustado corretamente.")
     return redirect("view_purchases")
-
 
 @csrf_exempt
 @login_required
@@ -1092,7 +1090,6 @@ def gerar_pdf_compras(compras, data_inicial, data_final):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 
-
 # ======================= API =================================================
 
 def get_all_categories(request):
@@ -1105,7 +1102,16 @@ def get_all_categories(request):
     return JsonResponse({'categories': categories_list})
 
 def get_all_customers(request):
+    query = request.GET.get("search", "").strip()
+
     customers = Customer.objects.all()
+
+    if query:
+        customers = customers.filter(
+            Q(name__icontains=query) |  # Busca pelo nome
+            Q(cpf_or_cnpj__icontains=query)  # Busca pelo CPF/CNPJ
+        )
+
     customer_list = [{
         'id': customer.id,
         'name': customer.name,
@@ -1123,7 +1129,16 @@ def get_all_customers(request):
     return JsonResponse({'customers': customer_list})
 
 def get_all_suppliers(request):
+    query = request.GET.get("search", "").strip()
+
     suppliers = Supplier.objects.all()
+
+    if query:
+        suppliers = suppliers.filter(
+            Q(name__icontains=query) |  # Busca pelo nome
+            Q(cnpj__icontains=query)  # Busca pelo CNPJ
+        )
+
     supplier_list = [{
         'id': supplier.id,
         'name': supplier.name,
@@ -1292,14 +1307,23 @@ def get_all_sales(request):
     return JsonResponse({"sales": sale_list})
 
 def get_all_purchases(request):
+    query = request.GET.get("search", "").strip()
+
     purchases = Purchase.objects.all()
+
+    if query:
+        purchases = purchases.filter(
+            Q(name__icontains=query) |  # Busca pelo nome da compra
+            Q(supplier__name__icontains=query)  # Busca pelo nome do fornecedor
+        )
+
     purchase_list = []
 
     for purchase in purchases:
         purchase_products = [
             {
                 "product_id": purchase_product.product.id if purchase_product.product else None,
-                "product_name": purchase_product.product.name if purchase_product.product else purchase_product.product_info,  # CORRIGIDO
+                "product_name": purchase_product.product.name if purchase_product.product else purchase_product.product_info,
                 "quantity": float(purchase_product.quantity),
                 "price": float(purchase_product.price),
                 "total_price": float(purchase_product.quantity * purchase_product.price),
@@ -1311,12 +1335,13 @@ def get_all_purchases(request):
             "purchase_id": purchase.id,
             "purchase_name": purchase.name,
             "purchase_created": purchase.created,
-            "supplier_name": purchase.supplier.name if purchase.supplier else purchase.supplier_name,  # CORRIGIDO
+            "supplier_name": purchase.supplier.name if purchase.supplier else purchase.supplier_name,
             "full_price": float(purchase.full_price),
             "products": purchase_products,
         })
 
     return JsonResponse({"purchases": purchase_list})
+
 
 def get_summary(request):
     today = now().date()
