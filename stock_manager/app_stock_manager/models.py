@@ -98,11 +98,13 @@ class Sale(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales")  # ALTERADO
-    customer_name = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+    customer_name = models.CharField(max_length=255, blank=True, null=True)  
 
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
     observations = models.TextField(blank=True, null=True)
+
+    is_quote = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         if self.customer and not self.customer_name:
@@ -117,7 +119,7 @@ class Sale(models.Model):
 class SaleProduct(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="sale_products")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="sale_products")
-    product_info = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+    product_info = models.CharField(max_length=255, blank=True, null=True)  
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -147,7 +149,7 @@ class Purchase(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchases")  # ALTERADO
-    supplier_name = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+    supplier_name = models.CharField(max_length=255, blank=True, null=True)  
 
     invoice_number = models.CharField(max_length=50)
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -166,7 +168,7 @@ class Purchase(models.Model):
 class PurchaseProduct(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="purchase_products")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name="purchase_products")
-    product_info = models.CharField(max_length=255, blank=True, null=True)  # NOVO CAMPO
+    product_info = models.CharField(max_length=255, blank=True, null=True)  
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
     price = models.DecimalField(max_digits=10, decimal_places=2)
 

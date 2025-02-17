@@ -26,6 +26,7 @@ urlpatterns = [
     path('sales/', views.view_sales, name='view_sales'),
     path('sales/new/', views.new_sale, name='new_sale'),
     path("sale/delete/<int:sale_id>/", views.delete_sale, name="delete_sale"),
+    path("api/quotes/<int:sale_id>/convert/", views.convert_quote_to_sale, name="convert_quote_to_sale"),  # Converter orçamento em venda
     path('purchases/', views.view_purchases, name='view_purchases'),
     path('purchases/new/', views.new_purchase, name='new_purchase'),
     path("purchase/delete/<int:purchase_id>/", views.delete_purchase, name="delete_purchase"),
@@ -46,6 +47,7 @@ urlpatterns = [
     path('relatorios/vendas/', views.gerar_relatorio_vendas, name='relatorio_vendas'),
 
     # ========== GET API =====================================================
+    path('api/quotes/', views.get_all_quotes, name='get_all_quotes'),
     path('api/categories/', views.get_all_categories, name='get_all_categories'),
     path('api/customers/', views.get_all_customers, name='get_all_customers'),
     path('api/suppliers/', views.get_all_suppliers, name='get_all_suppliers'),

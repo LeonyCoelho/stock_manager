@@ -80,6 +80,40 @@
             </div>
         </div>
     </div>
+
+    <div class="card  mb-3">
+        <div class="card-header">
+            📝 Orçamentos em Aberto
+        </div>
+        <div class="card-body">
+            <ul id="quote-list" class="list-group">
+                <li class="list-group-item text-muted">Carregando...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmConvertModal" tabindex="-1" aria-labelledby="confirmConvertLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmConvertLabel">Confirmar Conversão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza de que deseja converter este orçamento em uma venda? <br>
+                    Esta ação **não pode ser desfeita**.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="confirmConvertBtn">Converter</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    
      
      <!-- ================== CARDS DE RESUMO ===================================== -->
      <div class="mb-3">
@@ -210,314 +244,310 @@
 
 </div>
 
+{% comment %} RESUMO DE VENDA E COMPRA ========================================= {% endcomment %}
+
 <script>
-document.addEventListener("DOMContentLoaded", async function () {
-    const summaryUrl = "/api/summary/";
-    const latestSaleDataUrl = "/api/sales/latest/";
-    const latestPurchaseDataUrl = "/api/purchases/latest/";
-
-    // Função para buscar o resumo
-    async function fetchSummary() {
-        try {
-            const response = await fetch(summaryUrl);
-            const data = await response.json();
-
-            // Garantir que os valores são números e atualizar os elementos do DOM
-            document.querySelector("#dailySalesTotal").textContent = `R$ ${Number(data.daily.sales_total).toFixed(2)}`;
-            document.querySelector("#dailySoldProducts").textContent = `${Number(data.daily.products_sold)}`;
-            document.querySelector("#dailyPurchasesTotal").textContent = `R$ ${Number(data.daily.purchases_total).toFixed(2)}`;
-            document.querySelector("#dailyPurchasedProducts").textContent = `${Number(data.daily.products_purchased) || 0}`;
-            
-            document.querySelector("#weeklySalesTotal").textContent = `R$ ${Number(data.weekly.sales_total).toFixed(2)}`;
-            document.querySelector("#weeklySoldProducts").textContent = `${Number(data.weekly.products_sold)}`;
-            document.querySelector("#weeklyPurchasesTotal").textContent = `R$ ${Number(data.weekly.purchases_total).toFixed(2)}`;
-            document.querySelector("#weeklyPurchasedProducts").textContent = `${Number(data.weekly.products_purchased) || 0}`;
-            
-            document.querySelector("#monthlySalesTotal").textContent = `R$ ${Number(data.monthly.sales_total).toFixed(2)}`;
-            document.querySelector("#monthlySoldProducts").textContent = `${Number(data.monthly.products_sold)}`;
-            document.querySelector("#monthlyPurchasesTotal").textContent = `R$ ${Number(data.monthly.purchases_total).toFixed(2)}`;
-            document.querySelector("#monthlyPurchasedProducts").textContent = `${Number(data.monthly.products_purchased) || 0}`;
-        } catch (error) {
-            console.error("Erro ao buscar resumo:", error);
+    document.addEventListener("DOMContentLoaded", async function () {
+        const summaryUrl = "/api/summary/";
+        const latestSaleDataUrl = "/api/sales/latest/";
+        const latestPurchaseDataUrl = "/api/purchases/latest/";
+    
+        // Função para buscar o resumo
+        window.fetchSummary = async function () {  // <-- Torna global
+            try {
+                const response = await fetch(summaryUrl);
+                const data = await response.json();
+    
+                document.querySelector("#dailySalesTotal").textContent = `R$ ${Number(data.daily.sales_total).toFixed(2)}`;
+                document.querySelector("#dailySoldProducts").textContent = `${Number(data.daily.products_sold)}`;
+                document.querySelector("#dailyPurchasesTotal").textContent = `R$ ${Number(data.daily.purchases_total).toFixed(2)}`;
+                document.querySelector("#dailyPurchasedProducts").textContent = `${Number(data.daily.products_purchased) || 0}`;
+                
+                document.querySelector("#weeklySalesTotal").textContent = `R$ ${Number(data.weekly.sales_total).toFixed(2)}`;
+                document.querySelector("#weeklySoldProducts").textContent = `${Number(data.weekly.products_sold)}`;
+                document.querySelector("#weeklyPurchasesTotal").textContent = `R$ ${Number(data.weekly.purchases_total).toFixed(2)}`;
+                document.querySelector("#weeklyPurchasedProducts").textContent = `${Number(data.weekly.products_purchased) || 0}`;
+                
+                document.querySelector("#monthlySalesTotal").textContent = `R$ ${Number(data.monthly.sales_total).toFixed(2)}`;
+                document.querySelector("#monthlySoldProducts").textContent = `${Number(data.monthly.products_sold)}`;
+                document.querySelector("#monthlyPurchasesTotal").textContent = `R$ ${Number(data.monthly.purchases_total).toFixed(2)}`;
+                document.querySelector("#monthlyPurchasedProducts").textContent = `${Number(data.monthly.products_purchased) || 0}`;
+            } catch (error) {
+                console.error("Erro ao buscar resumo:", error);
+            }
         }
-    }
-
-    // Função para buscar dados mais recentes
-    async function fetchLatestData() {
-    try {
-        const responseSale = await fetch(latestSaleDataUrl);
-        const responsePurchase = await fetch(latestPurchaseDataUrl);
-
-        if (!responseSale.ok || !responsePurchase.ok) {
-            throw new Error("Erro ao buscar os dados mais recentes.");
+    
+        // Função para buscar dados mais recentes
+        window.fetchLatestData = async function () {  // <-- Torna global
+            try {
+                const responseSale = await fetch(latestSaleDataUrl);
+                const responsePurchase = await fetch(latestPurchaseDataUrl);
+    
+                if (!responseSale.ok || !responsePurchase.ok) {
+                    throw new Error("Erro ao buscar os dados mais recentes.");
+                }
+    
+                const dataSale = await responseSale.json();
+                const dataPurchase = await responsePurchase.json();
+    
+                // Renderizar as últimas vendas
+                const salesTableBody = document.querySelector("#latestSales");
+                salesTableBody.innerHTML = (dataSale.sales || []).map((sale) => `
+                    <tr>
+                        <td>${sale.sale_id || "N/A"}</td>
+                        <td>${sale.sale_name || "N/A"}</td>
+                        <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
+                        <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
+                    </tr>
+                `).join("");
+    
+                // Renderizar as últimas compras
+                const purchasesTableBody = document.querySelector("#latestPurchases");
+                purchasesTableBody.innerHTML = (dataPurchase.purchases || []).map((purchase) => `
+                    <tr>
+                        <td>${purchase.purchase_id || "N/A"}</td>
+                        <td>${purchase.purchase_name || "N/A"}</td>
+                        <td>${purchase.purchase_created ? new Date(purchase.purchase_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
+                        <td>R$ ${Number(purchase.full_price || 0).toFixed(2)}</td>
+                    </tr>
+                `).join("");
+            } catch (error) {
+                console.error("Erro ao buscar dados mais recentes:", error);
+            }
         }
-
-        const dataSale = await responseSale.json();
-        const dataPurchase = await responsePurchase.json();
-
-        // Função para formatar a data
-        const formatDate = (isoString) => {
-            const date = new Date(isoString);
-            return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" });
-        };
-
-        // Renderizar as últimas vendas
-        const salesTableBody = document.querySelector("#latestSales");
-        salesTableBody.innerHTML = (dataSale.sales || []).map((sale) => `
-            <tr>
-                <td>${sale.sale_id || "N/A"}</td>
-                <td>${sale.sale_name || "N/A"}</td>
-                <td>${sale.sale_created ? new Date(sale.sale_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
-                <td>R$ ${Number(sale.full_price || 0).toFixed(2)}</td>
-            </tr>
-
-        `).join("");
-
-        // Renderizar as últimas compras
-        const purchasesTableBody = document.querySelector("#latestPurchases");
-        purchasesTableBody.innerHTML = (dataPurchase.purchases || []).map((purchase) => `
-            <tr>
-                <td>${purchase.purchase_id || "N/A"}</td>
-                <td>${purchase.purchase_name || "N/A"}</td>
-                <td>${purchase.purchase_created ? new Date(purchase.purchase_created).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : "N/A"}</td>
-                <td>R$ ${Number(purchase.full_price || 0).toFixed(2)}</td>
-            </tr>
-        `).join("");
-    } catch (error) {
-        console.error("Erro ao buscar dados mais recentes:", error);
-    }
-}
-
-
-    // Executar as funções ao carregar a página
-    await fetchSummary();
-    await fetchLatestData();
-});
+    
+        // Executar as funções ao carregar a página
+        await fetchSummary();
+        await fetchLatestData();
+    });
+    
 </script>
 
 {% comment %} ========================== BOLETOS PENDENTES ================================= {% endcomment %}
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const apiUrl = "/api/boletos-pendentes/";
-    const tableBody = document.querySelector("#boletosPendetes");
-    let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/boletos-pendentes/";
+        const tableBody = document.querySelector("#boletosPendetes");
+        let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado
 
-    // Função para buscar os boletos pendentes
-    async function fetchBoletosPendentes() {
-        try {
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-            renderTable(data.boletos_pendentes);
-        } catch (error) {
-            console.error("Erro ao buscar boletos pendentes:", error);
-        }
-    }
-
-    // Função para renderizar a tabela
-    function renderTable(boletos) {
-        tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
-        const modalContainer = document.createElement("div"); // Contêiner para modais dinâmicos
-        modalContainer.id = "modalContainer";
-
-        const vendasMap = new Map();
-
-        boletos.forEach((boleto) => {
-            const venda = boleto.venda;
-
-            if (!vendasMap.has(venda.venda_id)) {
-                vendasMap.set(venda.venda_id, {
-                    venda_id: venda.venda_id,
-                    nome: venda.nome,
-                    data_venda: venda.data_venda,
-                    valor_total: parseFloat(venda.valor_total.replace("R$", "").trim()) || 0,
-                    total_boletos: 0,
-                    total_boletos_pendentes: 0,
-                    valor_total_pendentes: 0,
-                    boletos: [],
-                });
+        // Função para buscar os boletos pendentes
+        async function fetchBoletosPendentes() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                renderTable(data.boletos_pendentes);
+            } catch (error) {
+                console.error("Erro ao buscar boletos pendentes:", error);
             }
-
-            const vendaData = vendasMap.get(venda.venda_id);
-            vendaData.boletos.push(boleto);
-            vendaData.total_boletos++;
-
-            if (boleto.valor && parseFloat(boleto.valor.replace("R$", "").trim()) > 0) {
-                vendaData.total_boletos_pendentes++;
-                vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace("R$", "").trim());
-            }
-        });
-
-        vendasMap.forEach((vendaData, vendaId) => {
-            const row = `
-                <tr>
-                    <td>${vendaData.venda_id}</td>
-                    <td>${vendaData.nome}</td>
-                    <td>${vendaData.data_venda}</td>
-                    <td>${vendaData.total_boletos_pendentes}</td>
-                    <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
-                    <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
-                    <td>
-                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
-                            <i class="nf nf-md-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tableBody.innerHTML += row;
-
-            const modal = `
-                <div class="modal fade" id="boletoModal${vendaId}" tabindex="-1" aria-labelledby="boletoModalLabel${vendaId}" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="boletoModalLabel${vendaId}">${vendaData.nome}</h1>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                            </div>
-                            <div class="modal-body">
-                                <table class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Vencimento</th>
-                                            <th>Valor</th>
-                                            <th>Status</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${vendaData.boletos.map((boleto) => {
-                                            const valor = parseFloat(boleto.valor.replace("R$", "").trim()).toFixed(2);
-                                            const status = boleto.status || "Pendente";
-
-                                            return `
-                                                <tr>
-                                                    <td>${boleto.boleto_id}</td>
-                                                    <td>${boleto.data_vencimento}</td>
-                                                    <td>R$ ${valor}</td>
-                                                    <td>${status}</td>
-                                                    <td>
-                                                        <button type="button" class="btn btn-primary" onclick="openPaymentModal(${boleto.boleto_id})">Pagar</button>
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        }).join("")}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            modalContainer.insertAdjacentHTML("beforeend", modal);
-        });
-
-        const existingModalContainer = document.getElementById("modalContainer");
-        if (existingModalContainer) {
-            existingModalContainer.replaceWith(modalContainer);
-        } else {
-            document.body.appendChild(modalContainer);
         }
-    }
 
-    // Função para abrir o modal de pagamento
-    window.openPaymentModal = function (boletoId) {
-        boletoSelecionadoId = boletoId;
+        // Função para renderizar a tabela
+        function renderTable(boletos) {
+            tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+            const modalContainer = document.createElement("div"); // Contêiner para modais dinâmicos
+            modalContainer.id = "modalContainer";
 
-        // Criar modal de confirmação se ainda não existir
-        let confirmModal = document.getElementById("confirmPaymentModal");
-        if (!confirmModal) {
-            const modalHtml = `
-                <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h1 class="modal-title fs-5" id="confirmPaymentModalLabel">Confirmar Pagamento</h1>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                            </div>
-                            <div class="modal-body">
-                                Tem certeza de que deseja marcar este boleto como pago?
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                <button type="button" class="btn btn-primary" id="confirmPaymentButton">Confirmar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML("beforeend", modalHtml);
-            confirmModal = document.getElementById("confirmPaymentModal");
+            const vendasMap = new Map();
 
-            // Adicionar evento ao botão de confirmação
-            confirmModal.querySelector("#confirmPaymentButton").addEventListener("click", () => {
-                if (!boletoSelecionadoId) return;
+            boletos.forEach((boleto) => {
+                const venda = boleto.venda;
 
-                fetch(`/api/boletos/${boletoSelecionadoId}/pay/`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": getCookie("csrftoken"),
-                    },
-                })
-                    .then((response) => {
-                        if (response.ok) {
-                            alert("Boleto pago com sucesso!");
-                            fetchBoletosPendentes(); // Atualiza a tabela
+                if (!vendasMap.has(venda.venda_id)) {
+                    vendasMap.set(venda.venda_id, {
+                        venda_id: venda.venda_id,
+                        nome: venda.nome,
+                        data_venda: venda.data_venda,
+                        valor_total: parseFloat(venda.valor_total.replace("R$", "").trim()) || 0,
+                        total_boletos: 0,
+                        total_boletos_pendentes: 0,
+                        valor_total_pendentes: 0,
+                        boletos: [],
+                    });
+                }
 
-                            // Fecha o modal de pagamento
-                            const bsConfirmModal = bootstrap.Modal.getInstance(confirmModal);
-                            bsConfirmModal.hide();
+                const vendaData = vendasMap.get(venda.venda_id);
+                vendaData.boletos.push(boleto);
+                vendaData.total_boletos++;
 
-                            // Fecha o modal da venda
-                            const activeVendaModal = document.querySelector(".modal.show");
-                            if (activeVendaModal) {
-                                const bsVendaModal = bootstrap.Modal.getInstance(activeVendaModal);
-                                bsVendaModal.hide();
-                            }
-
-                            // Remove qualquer backdrop restante
-                            const backdrops = document.querySelectorAll(".modal-backdrop");
-                            backdrops.forEach((backdrop) => backdrop.remove());
-                        } else {
-                            alert("Erro ao processar o pagamento.");
-                        }
-                    })
-                    .catch((error) => console.error("Erro ao processar pagamento:", error));
+                if (boleto.valor && parseFloat(boleto.valor.replace("R$", "").trim()) > 0) {
+                    vendaData.total_boletos_pendentes++;
+                    vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace("R$", "").trim());
+                }
             });
 
-        }
+            vendasMap.forEach((vendaData, vendaId) => {
+                const row = `
+                    <tr>
+                        <td>${vendaData.venda_id}</td>
+                        <td>${vendaData.nome}</td>
+                        <td>${vendaData.data_venda}</td>
+                        <td>${vendaData.total_boletos_pendentes}</td>
+                        <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
+                        <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#boletoModal${vendaId}">
+                                <i class="nf nf-md-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
 
-        // Mostrar o modal de confirmação
-        const bsModal = new bootstrap.Modal(confirmModal);
-        bsModal.show();
-    };
+                const modal = `
+                    <div class="modal fade" id="boletoModal${vendaId}" tabindex="-1" aria-labelledby="boletoModalLabel${vendaId}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="boletoModalLabel${vendaId}">${vendaData.nome}</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <table class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Vencimento</th>
+                                                <th>Valor</th>
+                                                <th>Status</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${vendaData.boletos.map((boleto) => {
+                                                const valor = parseFloat(boleto.valor.replace("R$", "").trim()).toFixed(2);
+                                                const status = boleto.status || "Pendente";
 
-    // Função para obter o CSRF token
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== "") {
-            const cookies = document.cookie.split(";");
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.startsWith(name + "=")) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
+                                                return `
+                                                    <tr>
+                                                        <td>${boleto.boleto_id}</td>
+                                                        <td>${boleto.data_vencimento}</td>
+                                                        <td>R$ ${valor}</td>
+                                                        <td>${status}</td>
+                                                        <td>
+                                                            <button type="button" class="btn btn-primary" onclick="openPaymentModal(${boleto.boleto_id})">Pagar</button>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join("")}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                modalContainer.insertAdjacentHTML("beforeend", modal);
+            });
+
+            const existingModalContainer = document.getElementById("modalContainer");
+            if (existingModalContainer) {
+                existingModalContainer.replaceWith(modalContainer);
+            } else {
+                document.body.appendChild(modalContainer);
             }
         }
-        return cookieValue;
-    }
 
-    // Inicializa a tabela
-    fetchBoletosPendentes();
-});
+        // Função para abrir o modal de pagamento
+        window.openPaymentModal = function (boletoId) {
+            boletoSelecionadoId = boletoId;
+
+            // Criar modal de confirmação se ainda não existir
+            let confirmModal = document.getElementById("confirmPaymentModal");
+            if (!confirmModal) {
+                const modalHtml = `
+                    <div class="modal fade" id="confirmPaymentModal" tabindex="-1" aria-labelledby="confirmPaymentModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="confirmPaymentModalLabel">Confirmar Pagamento</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Tem certeza de que deseja marcar este boleto como pago?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-primary" id="confirmPaymentButton">Confirmar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML("beforeend", modalHtml);
+                confirmModal = document.getElementById("confirmPaymentModal");
+
+                // Adicionar evento ao botão de confirmação
+                confirmModal.querySelector("#confirmPaymentButton").addEventListener("click", () => {
+                    if (!boletoSelecionadoId) return;
+
+                    fetch(`/api/boletos/${boletoSelecionadoId}/pay/`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCookie("csrftoken"),
+                        },
+                    })
+                        .then((response) => {
+                            if (response.ok) {
+                                alert("Boleto pago com sucesso!");
+                                fetchBoletosPendentes(); // Atualiza a tabela
+
+                                // Fecha o modal de pagamento
+                                const bsConfirmModal = bootstrap.Modal.getInstance(confirmModal);
+                                bsConfirmModal.hide();
+
+                                // Fecha o modal da venda
+                                const activeVendaModal = document.querySelector(".modal.show");
+                                if (activeVendaModal) {
+                                    const bsVendaModal = bootstrap.Modal.getInstance(activeVendaModal);
+                                    bsVendaModal.hide();
+                                }
+
+                                // Remove qualquer backdrop restante
+                                const backdrops = document.querySelectorAll(".modal-backdrop");
+                                backdrops.forEach((backdrop) => backdrop.remove());
+                            } else {
+                                alert("Erro ao processar o pagamento.");
+                            }
+                        })
+                        .catch((error) => console.error("Erro ao processar pagamento:", error));
+                });
+
+            }
+
+            // Mostrar o modal de confirmação
+            const bsModal = new bootstrap.Modal(confirmModal);
+            bsModal.show();
+        };
+
+        // Função para obter o CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + "=")) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Inicializa a tabela
+        fetchBoletosPendentes();
+    });
 
 </script>
-    
+   
+ {% comment %} ESTOQUE NEGATIVO ============================================ {% endcomment %}
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         // URL da API para buscar os estoques negativos
@@ -562,6 +592,76 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 </script>
 
+{% comment %} ORCAMENTOS ABERTOS ============================================= {% endcomment %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let selectedQuoteId = null; // Guarda o ID do orçamento a ser convertido
+    
+        async function fetchQuotes() {
+            try {
+                const response = await fetch("/api/quotes/");
+                if (!response.ok) throw new Error("Erro ao buscar orçamentos");
+    
+                const data = await response.json();
+                const quoteList = document.querySelector("#quote-list");
+                quoteList.innerHTML = "";
+    
+                if (data.quotes.length === 0) {
+                    quoteList.innerHTML = '<li class="list-group-item text-muted">Nenhum orçamento em aberto.</li>';
+                    return;
+                }
+    
+                data.quotes.forEach(quote => {
+                    const li = document.createElement("li");
+                    li.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
+                    li.innerHTML = `
+                        <span>${quote.name} - Cliente: ${quote.customer_name || "N/A"} - R$ ${quote.full_price.toFixed(2)}</span>
+                        <button class="btn btn-sm btn-success" onclick="showConvertModal(${quote.id})">Converter em Venda</button>
+                    `;
+                    quoteList.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Erro ao carregar orçamentos:", error);
+            }
+        }
+    
+        // Exibe o modal de confirmação antes de converter
+        window.showConvertModal = function (quoteId) {
+            selectedQuoteId = quoteId;
+            const modal = new bootstrap.Modal(document.getElementById("confirmConvertModal"));
+            modal.show();
+        };
+    
+        // Confirma e converte a venda
+        document.getElementById("confirmConvertBtn").addEventListener("click", async function () {
+            if (!selectedQuoteId) return;
+    
+            try {
+                const response = await fetch(`/api/quotes/${selectedQuoteId}/convert/`, { method: "POST" });
+                const result = await response.json();
+    
+                alert(result.message); // Mostra o alerta com a mensagem correta
+                if (result.success) {
+                    fetchQuotes(); // Atualiza a lista
+                    window.fetchSummary();
+                    window.fetchLatestData();
+                }
+            } catch (error) {
+                alert("Erro ao converter orçamento.");
+                console.error("Erro ao converter orçamento:", error);
+            }
+            
+            selectedQuoteId = null; // Reseta o ID do orçamento
+            const modal = bootstrap.Modal.getInstance(document.getElementById("confirmConvertModal"));
+            modal.hide();
+        });
+    
+        fetchQuotes();
+    });
+    
+</script>
+    
 {% comment %} =========== ESTOQUE FORA DO LIMITE ============================== {% endcomment %}
 
 <script>
@@ -575,7 +675,7 @@ document.addEventListener("DOMContentLoaded", function () {
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
-                const stocks = data.stock || [];  // Garante que a lista existe
+                const stocks = data.stocks || [];  // A API retorna "stocks", e não "stock"
     
                 // Limpa a lista antes de adicionar novos itens
                 lowStockList.innerHTML = "";
@@ -583,6 +683,8 @@ document.addEventListener("DOMContentLoaded", function () {
     
                 let lowStockCount = 0;
                 let highStockCount = 0;
+    
+                console.log("Dados recebidos da API:", stocks); // Debug para verificar os dados no console
     
                 stocks.forEach(stock => {
                     const quantity = parseFloat(stock.quantity);
@@ -593,8 +695,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         lowStockCount++;
                         lowStockList.insertAdjacentHTML("beforeend", `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                ${stock.product.id} - 
-                                ${stock.product.name}
+                                ${stock.product_name} 
                                 <span class="badge bg-danger">${quantity} / ${minQuantity}</span>
                             </li>
                         `);
@@ -602,8 +703,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         highStockCount++;
                         highStockList.insertAdjacentHTML("beforeend", `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                ${stock.product.id} - 
-                                ${stock.product.name}
+                                ${stock.product_name} 
                                 <span class="badge bg-primary">${quantity} / ${maxQuantity}</span>
                             </li>
                         `);
@@ -630,60 +730,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     </script>
     
+    
 
 
 
-<!-- <script>
-    let boletoSelecionadoId = null; // Armazena o ID do boleto selecionado
 
-function confirmarPagamento(boletoId) {
-    boletoSelecionadoId = boletoId; // Define o ID do boleto selecionado
-    const confirmarModal = new bootstrap.Modal(document.getElementById('confirmarPagamentoModal'));
-    confirmarModal.show();
-}
-
-// Evento para confirmar o pagamento
-document.getElementById('confirmarPagamentoBtn').addEventListener('click', () => {
-    if (!boletoSelecionadoId) return;
-
-    fetch(`/boletos/${boletoSelecionadoId}/pagar/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'), // Certifique-se de que o CSRF token está sendo enviado
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => {
-        if (response.ok) {
-            return response.json();
-        } else {
-            throw new Error('Erro ao marcar o boleto como pago.');
-        }
-    })
-    .then(data => {
-        alert(data.message);
-        location.reload(); // Atualiza a página para refletir a alteração
-    })
-    .catch(error => {
-        alert('Erro: ' + error.message);
-    });
-});
-
-// Função para obter o CSRF token
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-</script> -->
 {% endblock %}

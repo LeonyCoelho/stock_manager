@@ -91,7 +91,17 @@
                 <textarea class="form-control" name="observations" rows="4"></textarea>
 
                 <!-- Botão de enviar -->
-                <button type="submit" class="btn btn-primary mt-3">Finalizar Venda</button>
+                <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote">
+                <label class="form-check-label" for="is_quote">
+                    Salvar como orçamento
+                </label>
+                
+                
+                
+                
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                
+                
             </form>
         </div>
     </div>
@@ -256,6 +266,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const boletoFields = document.querySelector("#boletoFields");
         const installmentsContainer = document.querySelector("#installmentsContainer");
         const addInstallmentButton = document.querySelector("#addInstallment");
+        const isQuote = document.querySelector("#is_quote").checked
     
         let products = []; // Cache dos produtos retornados pela API
         let addedProducts = []; // Lista de produtos adicionados
@@ -414,6 +425,11 @@ document.addEventListener("DOMContentLoaded", function () {
     
         saleForm.addEventListener("submit", async function (event) {
             event.preventDefault();
+
+            // 🔥 CAPTURA O VALOR DO CHECKBOX NO MOMENTO DO ENVIO
+            const isQuote = document.querySelector("#is_quote").checked;
+
+            console.log("DEBUG: Checkbox marcado?", isQuote); // 🔍 Verifica se está correto
     
             const name = document.querySelector("#name").value.trim();
             const customer = document.querySelector("[name='customer']").value;
@@ -429,6 +445,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 customer,
                 payment_type: paymentType,
                 observations,
+                is_quote: isQuote,  // 🔥 Agora envia corretamente o checkbox!
                 products: addedProducts.map(({ id, quantity, price }) => ({
                     id,
                     quantity,
@@ -541,4 +558,5 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+
 {% endblock %}

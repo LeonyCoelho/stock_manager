@@ -359,6 +359,9 @@ def add_sale(request):
             # Carregar os dados do corpo da requisição
             data = json.loads(request.body)
             customer_id = data.get("customer")
+            is_quote = data.get("is_quote", False)  # ✅ Agora captura corretamente
+            print(f"Valor de is_quote: {is_quote}")  # Debug para conferir o valor
+
 
             # Valida se o cliente existe
             customer = get_object_or_404(Customer, id=customer_id)
@@ -403,7 +406,11 @@ def add_sale(request):
                 nfe=nfe,
                 payment_type=payment_type,
                 full_price=total_price,  # Salva o preço total como Decimal
+                is_quote=is_quote,  # Define se é orçamento ou venda
             )
+
+            
+
 
             # Adicionar produtos à venda
             for product_data in products:
@@ -422,11 +429,13 @@ def add_sale(request):
                     price=custom_price,  # Usa o preço enviado pelo usuário
                 )
 
-
-                # Atualizar o estoque (permitir negativo)
-                if stock:
+                # 🔥 ESTOQUE NÃO ALTERA SE FOR ORÇAMENTO!
+                if not is_quote:
+                    print(f"🔴 Atualizando estoque para {product.name} - Removendo {quantity}")
                     stock.quantity -= quantity
-                    stock.save(update_fields=["quantity"])  # Salva somente o campo 'quantity'
+                    stock.save(update_fields=["quantity"])
+                else:
+                    print(f"🟢 Estoque NÃO alterado para {product.name} (Orçamento)")
 
             # Adicionar boletos (se aplicável)
             if payment_type == "BO":
@@ -445,6 +454,44 @@ def add_sale(request):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=400)
     return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+
+@csrf_exempt
+@login_required
+def convert_quote_to_sale(request, sale_id):
+    try:
+        sale = get_object_or_404(Sale, id=sale_id)
+
+        if not sale.is_quote:
+            return JsonResponse({"success": False, "message": "Essa venda já foi concretizada."}, status=400)
+
+        sale.is_quote = False  # Agora é uma venda
+        sale.save()
+
+        produtos_removidos = []  # Lista para armazenar produtos deletados
+
+        # Atualizar o estoque agora que virou venda
+        for sale_product in sale.sale_products.all():
+            if not sale_product.product:  # O produto foi deletado
+                produtos_removidos.append(sale_product.product_info)
+                continue  # Pula este item e evita erro
+
+            stock = sale_product.product.stocks.first()
+            if stock:
+                stock.quantity -= sale_product.quantity
+                stock.save(update_fields=["quantity"])
+
+        # Construir mensagem final
+        if produtos_removidos:
+            msg = "Orçamento convertido em venda, mas alguns produtos ja foram removidos: " + ", ".join(produtos_removidos)
+        else:
+            msg = "Orçamento convertido em venda com sucesso!"
+
+        return JsonResponse({"success": True, "message": msg})
+    
+    except Exception as e:
+        return JsonResponse({"success": False, "message": f"Erro ao converter: {str(e)}"}, status=400)
+
+
 
 @csrf_exempt
 @login_required
@@ -1348,12 +1395,12 @@ def get_summary(request):
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
 
-    # Filtros para vendas e compras
-    daily_sales = Sale.objects.filter(created__date=today)
+    # Filtrar apenas vendas concretizadas (is_quote=False)
+    daily_sales = Sale.objects.filter(created__date=today, is_quote=False)
     daily_purchases = Purchase.objects.filter(created__date=today)
-    weekly_sales = Sale.objects.filter(created__date__gte=start_of_week)
+    weekly_sales = Sale.objects.filter(created__date__gte=start_of_week, is_quote=False)
     weekly_purchases = Purchase.objects.filter(created__date__gte=start_of_week)
-    monthly_sales = Sale.objects.filter(created__date__gte=start_of_month)
+    monthly_sales = Sale.objects.filter(created__date__gte=start_of_month, is_quote=False)
     monthly_purchases = Purchase.objects.filter(created__date__gte=start_of_month)
 
     # Função auxiliar para calcular resumo
@@ -1464,4 +1511,14 @@ def get_negative_stocks(request):
 
     return JsonResponse({'negative_stocks': stock_list})
 
+def get_all_quotes(request):
+    quotes = Sale.objects.filter(is_quote=True)  # Apenas orçamentos
+    quote_list = [{
+        "id": quote.id,
+        "name": quote.name,
+        "customer_name": quote.customer_name,
+        "full_price": float(quote.full_price),
+        "created": quote.created,
+    } for quote in quotes]
 
+    return JsonResponse({"quotes": quote_list})
