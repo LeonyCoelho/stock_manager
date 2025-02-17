@@ -32,227 +32,13 @@
             </nav>
         </div>
     </div>
+    <!-- Container para modais dinâmicos -->
+    <div id="modalsContainer"></div>
+
 
     <!-- Controles de Paginação -->
 </div>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const apiUrl = "/api/sales/";
-        const rowsPerPage = 20;
-        let currentPage = 1;
-        let sales = [];
 
-        // Função para buscar dados da API
-        async function fetchCustomers() {
-            try {
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-                sales = data.sales || [];
-                renderTable();
-                renderPagination();
-            } catch (error) {
-                console.error("Erro ao buscar clientes:", error);
-            }
-        }
-
-        // Função para renderizar a tabela
-        function renderTable() {
-    const tableBody = document.querySelector("#sale-table tbody");
-    tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
-
-    let modals = ""; // Declara modals antes do loop
-
-    const start = (currentPage - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    const pageData = sales.slice(start, end);
-
-    pageData.forEach((sale, index) => {
-        const row = `
-            <tr>
-                <td>${start + index + 1}</td>
-                <td>${sale.sale_name}</td>
-                <td>${sale.nfe}</td>
-                <td>${sale.customer_name}</td>
-                <td>${new Date(sale.sale_created).toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })}</td>
-                <td>R$${sale.full_price.toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal${sale.sale_id}">
-                        Detalhes
-                    </button>
-                    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteSaleModal${sale.sale_id}">
-                        <i class="nf nf-fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-
-            <!-- Modal de Confirmação para Deletar -->
-            <div class="modal fade" id="deleteSaleModal${sale.sale_id}" tabindex="-1" aria-labelledby="deleteSaleLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Confirmar Exclusão</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body">
-                            Tem certeza que deseja excluir esta venda?
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <a href="/sale/delete/${sale.sale_id}/" class="btn btn-danger">Deletar</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        tableBody.insertAdjacentHTML("beforeend", row);
-
-        // Cria a lista de produtos
-        const productList = sale.products
-        .map(product => `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span>
-                    ${product.product_id ? `${product.product_id} - ` : ""}
-                    ${product.product_name}
-                    ${!product.product_id ? `<span class="badge bg-danger ms-2">Removido</span>` : ""}
-                </span>
-                <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
-            </li>
-        `)
-    
-            .join("");
-
-        // Armazena o modal para renderizar após o loop
-        modals += `
-            <div class="modal fade" id="saleModal${sale.sale_id}" tabindex="-1" aria-labelledby="detailsModalLabel${sale.sale_id}" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h1 class="modal-title fs-5" id="detailsModalLabel${sale.sale_id}">Detalhes da Venda</h1>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <h5>Cliente: ${sale.customer_name}</h5>
-                            <h5>Data: ${new Date(sale.sale_created).toLocaleString()}</h5>
-                            <h5>Valor Total: R$${sale.full_price.toFixed(2)}</h5>
-                            <hr>
-                            <h6>Produtos:</h6>
-                            <ul class="list-group">
-                                ${productList}
-                            </ul>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-
-    // Insira os modais no final do body
-    document.querySelector("body").insertAdjacentHTML("beforeend", modals);
-}
-
-
-
-        // Função para renderizar os botões de paginação
-        function renderPagination() {
-            const totalPages = Math.ceil(sales.length / rowsPerPage);
-            const pagination = document.querySelector("#pagination");
-            pagination.innerHTML = ""; // Limpa os botões antes de renderizar
-
-            // Botão "Anterior"
-            pagination.insertAdjacentHTML(
-                "beforeend",
-                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
-                </li>`
-            );
-
-            // Botões de página
-            for (let i = 1; i <= totalPages; i++) {
-                pagination.insertAdjacentHTML(
-                    "beforeend",
-                    `<li class="page-item ${i === currentPage ? "active" : ""}">
-                        <button class="page-link" data-page="${i}">${i}</button>
-                    </li>`
-                );
-            }
-
-            // Botão "Próximo"
-            pagination.insertAdjacentHTML(
-                "beforeend",
-                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
-                </li>`
-            );
-
-            // Adiciona eventos aos botões
-            document.querySelectorAll("#pagination .page-link").forEach((button) => {
-                button.addEventListener("click", function () {
-                    const page = parseInt(this.dataset.page, 10);
-                    if (!isNaN(page) && page > 0 && page <= totalPages) {
-                        currentPage = page;
-                        renderTable();
-                        renderPagination();
-                    }
-                });
-            });
-        }
-
-        window.deleteProduct = async function (saleId) {
-            const url = `/api/sales/${saleId}/delete/`;
-
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": getCookie("csrftoken"), // CSRF Token
-                    },
-                });
-
-                if (response.ok) {
-                    // alert("Produto deletado com sucesso!");
-                    document.querySelector(`#saleModal${saleId}`).querySelector(".btn-close").click();
-                    fetchCustomers(); // Atualiza a tabela de produtos
-                } else {
-                    const errorData = await response.json();
-                    console.error("Erro ao deletar o produto:", errorData);
-                    alert("Erro ao deletar o produto.");
-                }
-            } catch (error) {
-                console.error("Erro ao enviar requisição:", error);
-                alert("Erro ao enviar requisição.");
-            }
-        };
-
-        // Função utilitária para buscar o CSRF token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== "") {
-                const cookies = document.cookie.split(";");
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.startsWith(name + "=")) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        // Inicializa a tabela
-        fetchCustomers();
-    });
-</script>
 
 <script>
 
@@ -263,19 +49,19 @@
         let salesData = [];
         let filteredSales = [];
     
-        async function fetchSales(searchQuery = "") {
+        window.fetchSales = async function (searchQuery = "") {
             try {
-                let url = apiUrl;
+                let url = "/api/sales/";
                 if (searchQuery.trim() !== "") {
                     url += `?search=${encodeURIComponent(searchQuery)}`;
                 }
-    
+        
                 const response = await fetch(url);
-                if (!response.ok) throw new Error("Erro ao buscar dados da API");
-    
+                if (!response.ok) throw new Error("Erro ao buscar vendas.");
+        
                 const data = await response.json();
                 salesData = data.sales || [];
-    
+        
                 filteredSales = [...salesData]; // Garante que a lista filtrada sempre tenha os dados carregados
                 currentPage = 1; // Reseta para a primeira página
                 renderTable();
@@ -283,23 +69,24 @@
             } catch (error) {
                 console.error("Erro ao buscar vendas:", error);
             }
-        }
+        };
+        
     
         function renderTable() {
             const tableBody = document.querySelector("#sale-table tbody");
             tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
-    
+        
             if (filteredSales.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center">Nenhuma venda encontrada.</td></tr>`;
                 return;
             }
-    
+        
             const start = (currentPage - 1) * rowsPerPage;
             const end = start + rowsPerPage;
             const pageData = filteredSales.slice(start, end);
-    
+        
             let modals = ""; // Variável para armazenar os modais antes de inseri-los
-    
+        
             pageData.forEach((sale, index) => {
                 const row = `
                     <tr>
@@ -325,9 +112,9 @@
                         </td>
                     </tr>
                 `;
-    
+        
                 tableBody.insertAdjacentHTML("beforeend", row);
-    
+        
                 // Criar lista de produtos
                 const productList = sale.products
                     .map(product => `
@@ -341,7 +128,7 @@
                         </li>
                     `)
                     .join("");
-    
+        
                 // Modais de detalhes
                 modals += `
                     <div class="modal fade" id="saleModal${sale.sale_id}" tabindex="-1" aria-labelledby="detailsModalLabel${sale.sale_id}" aria-hidden="true">
@@ -367,13 +154,48 @@
                             </div>
                         </div>
                     </div>
+        
+                    <div class="modal fade" id="deleteSaleModal${sale.sale_id}" tabindex="-1" aria-labelledby="deleteSaleLabel${sale.sale_id}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    Tem certeza que deseja excluir a venda <strong>${sale.sale_name}</strong>?
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="button" class="btn btn-danger" onclick="deleteSale(${sale.sale_id})">Deletar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 `;
             });
-    
+        
+            // 🔥 APAGA OS MODAIS ANTIGOS E ADICIONA NOVAMENTE NO BODY
             document.querySelectorAll(".modal").forEach(modal => modal.remove());
             document.querySelector("body").insertAdjacentHTML("beforeend", modals);
+        
+            // 🔥 FORÇA O BOOTSTRAP A RECONHECER OS NOVOS MODAIS
+            document.querySelectorAll(".modal").forEach(modal => {
+                new bootstrap.Modal(modal);
+            });
+        
+            console.log("✅ Modais renderizados com sucesso!");
         }
-    
+        
+
+
+
+
+
+
+
+
+
         function renderPagination() {
             const totalPages = Math.ceil(filteredSales.length / rowsPerPage);
             const pagination = document.querySelector("#pagination");
@@ -430,9 +252,54 @@
     
         fetchSales();
     });
+
+    async function deleteSale(saleId) {
+        if (!saleId) {
+            console.error("Erro: ID da venda não encontrado.");
+            return;
+        }
+    
+        try {
+            const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+            const response = await fetch(`/sale/delete/${saleId}/`, {
+                method: "DELETE",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "Content-Type": "application/json",
+                },
+            });
+    
+            const result = await response.json();
+    
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Erro desconhecido ao deletar a venda.");
+            }
+    
+            alert("Venda deletada com sucesso!");
+            fetchSales();  // ✅ Atualiza a lista sem recarregar a página
+            // Fecha o modal e remove o backdrop
+            const modalElement = document.getElementById(`deleteSaleModal${saleId}`);
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+
+            // Remove backdrop manualmente
+            document.querySelectorAll(".modal-backdrop").forEach(backdrop => backdrop.remove());
+
+        } catch (error) {
+            console.error("Erro ao deletar venda:", error);
+            alert(`Erro ao deletar: ${error.message}`);
+        }
+    }
+    
+
+    
+
     
     
 
 </script>
+
 
 {% endblock %}

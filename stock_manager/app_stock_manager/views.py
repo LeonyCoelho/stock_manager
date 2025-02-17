@@ -492,21 +492,30 @@ def convert_quote_to_sale(request, sale_id):
         return JsonResponse({"success": False, "message": f"Erro ao converter: {str(e)}"}, status=400)
 
 
-
 @csrf_exempt
 @login_required
 def delete_sale(request, sale_id):
-    sale = get_object_or_404(Sale, id=sale_id)
+    if request.method == "DELETE":
+        try:
+            sale = get_object_or_404(Sale, id=sale_id)
 
-    # Reembolsar o estoque
-    for sale_product in sale.sale_products.all():
-        stock, created = Stock.objects.get_or_create(product=sale_product.product)
-        stock.quantity += sale_product.quantity  # Devolve a quantidade vendida ao estoque
-        stock.save()
+            # Reembolsar o estoque
+            for sale_product in sale.sale_products.all():
+                if sale_product.product:
+                    stock = Stock.objects.filter(product=sale_product.product).first()
+                    if stock:
+                        stock.quantity += sale_product.quantity
+                        stock.save(update_fields=["quantity"])
 
-    sale.delete()
-    messages.success(request, "Venda deletada e estoque reembolsado com sucesso.")
-    return redirect("view_sales")  # Redireciona para a lista de vendas
+            sale.delete()
+            return JsonResponse({"success": True, "message": "Venda deletada com sucesso."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+
+
 
 @csrf_exempt
 @login_required
