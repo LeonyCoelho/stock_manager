@@ -1,0 +1,399 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="card mt-3">
+        <div class="card-header">Nova Venda</div>
+        <div class="card-body">
+            <form method="post" id="saleForm">
+                {% csrf_token %}
+                <div class="row">
+                    <!-- Nome da Venda -->
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Nome:</label>
+                        <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                    <div class="mb-2 col-2">
+                        <label class="form-label">Nº do pedido</label>
+                        <input class="form-control" name="nfe" type="text" id="nfe" required />
+                    </div>
+                    
+                    <!-- Metodo de Pagamento -->
+                    <div class="mb-2 col-2">
+                        <div class="mb-3">
+                            <label for="paymentType" class="form-label">Tipo de Pagamento</label>
+                            <select class="form-select" id="paymentType" name="payment_type" required>
+                                <option value="AV">À Vista</option>
+                                <option value="CR">Crédito</option>
+                                <option value="BO">Boleto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="mb-2 col">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" name="customer" required>
+                            <option hidden selected disabled>Selecione</option>
+                            <!-- Os clientes devem renderizar aqui -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Boleto -->
+                <div id="boletoFields" style="display: none;">
+                    <label for="installments" class="form-label">Parcelas</label>
+                    <div id="installmentsContainer">
+                        <!-- As parcelas serão adicionadas dinamicamente aqui -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary mt-2" id="addInstallment">Adicionar Parcela</button>
+                </div>
+
+
+                <!-- Campo de busca para produtos -->
+                <div class="mb-3">
+                    <label class="form-label">Buscar Produto</label>
+                    <input type="text" class="form-control" id="productSearch" placeholder="Digite o nome do produto" />
+                </div>
+
+                <!-- Lista de resultados da busca -->
+                 <div class="mb-3">
+                     <div id="product-table-container"> 
+                         <ul class="list-group" id="productResults"></ul>
+                     </div>
+                 </div>
+
+                <!-- Produtos adicionados -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5>Produtos Selecionados</h5>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Quantidade</th>
+                                        <th>Preço Unitário</th>
+                                        <th>Subtotal</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="selectedProducts">
+                                    <!-- Os produtos adicionados aparecerão aqui -->
+                                </tbody>
+                            </table>
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <label class="form-label">Observações</label>
+                <textarea class="form-control" name="observations" rows="4"></textarea>
+
+                <!-- Botão de enviar -->
+                <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote">
+                <label class="form-check-label" for="is_quote">
+                    Salvar como orçamento
+                </label>
+                
+                
+                
+                
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                
+                
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ======= API PARA A PESQUISA DE PRODUTORS ======= -->
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/products/search/"; // URL da API de produtos
+        const productSearch = document.querySelector("#productSearch");
+        const productResults = document.querySelector("#productResults");
+        const selectedProductsContainer = document.querySelector("#selectedProducts");
+
+        let products = {{ products|safe }}; // Produtos já carregados do orçamento
+        let addedProducts = [...products]; // Clona os produtos para permitir modificação
+
+        // Atualiza a lista de produtos selecionados
+        function renderSelectedProducts() {
+            if (!selectedProductsContainer) {
+                console.error("Elemento para exibição dos produtos selecionados não encontrado.");
+                return;
+            }
+
+            if (addedProducts.length === 0) {
+                selectedProductsContainer.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum produto adicionado.</td></tr>`;
+                return;
+            }
+
+            selectedProductsContainer.innerHTML = addedProducts
+                .map(product => `
+                    <tr>
+                        <td>${product.name}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" value="${product.quantity}" min="1" 
+                                onchange="updateQuantity(${product.id}, this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" value="${product.price}" min="0" step="0.01"
+                                onchange="updatePrice(${product.id}, this.value)">
+                        </td>
+                        <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">
+                                Remover
+                            </button>
+                        </td>
+                    </tr>
+                `)
+                .join("");
+
+            // Atualiza o total da venda
+            const total = addedProducts.reduce((sum, product) => sum + Number(product.price) * product.quantity, 0);
+            selectedProductsContainer.innerHTML += `
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                    <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
+                </tr>
+            `;
+        }
+
+        // Atualiza a quantidade de um produto
+        window.updateQuantity = function (productId, quantity) {
+            const product = addedProducts.find(p => p.id === productId);
+            if (product && quantity > 0) {
+                product.quantity = parseInt(quantity, 10);
+                renderSelectedProducts();
+            }
+        };
+
+        // Atualiza o preço de um produto
+        window.updatePrice = function (productId, price) {
+            const product = addedProducts.find(p => p.id === productId);
+            if (product && price >= 0) {
+                product.price = parseFloat(price);
+                renderSelectedProducts();
+            }
+        };
+
+        // Remove um produto da lista
+        window.removeProduct = function (productId) {
+            addedProducts = addedProducts.filter(p => p.id !== productId);
+            renderSelectedProducts();
+        };
+
+        // Busca produtos na API
+        async function fetchProducts(query) {
+            if (!query) {
+                productResults.innerHTML = "";
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}?search=${query}`);
+                const data = await response.json();
+                renderProductResults(data.products || []);
+            } catch (error) {
+                console.error("Erro ao buscar produtos:", error);
+            }
+        }
+
+        // Renderiza os produtos encontrados na busca
+        function renderProductResults(products) {
+            productResults.innerHTML = products
+                .map(product => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${product.name} - ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
+                        <button type="button" class="btn btn-sm btn-success" onclick="addProduct(${product.id}, '${product.name}', ${product.price})">
+                            Adicionar
+                        </button>
+                    </li>
+                `)
+                .join("");
+        }
+
+        // Adiciona um novo produto à lista sem substituir os já existentes
+        window.addProduct = function (productId, name, price) {
+            if (addedProducts.some(p => p.id === productId)) return; // Evita duplicatas
+
+            addedProducts.push({ id: productId, name, quantity: 1, price });
+            renderSelectedProducts();
+        };
+
+        // Evento para busca de produtos
+        productSearch.addEventListener("input", function () {
+            const query = this.value.trim();
+            fetchProducts(query);
+        });
+
+        // Renderiza os produtos carregados ao abrir a página
+        renderSelectedProducts();
+    });
+</script>
+
+
+<!-- ====== API BUSCAR CLIENTES ======= -->
+<script aria-disabled="true">
+    document.addEventListener("DOMContentLoaded", function () {
+        const customerApiUrl = "/api/customers/"; // URL da API de clientes
+        const customerSelect = document.querySelector("[name='customer']");
+
+        // Função para buscar clientes pela API
+        async function fetchCustomers() {
+            try {
+                const response = await fetch(customerApiUrl);
+                const data = await response.json();
+                const customers = data.customers || [];
+                renderCustomerOptions(customers);
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+
+        // Função para renderizar as opções de clientes
+        function renderCustomerOptions(customers) {
+            customerSelect.innerHTML = `
+                <option hidden selected disabled>Selecione</option>
+            `; // Reseta as opções existentes
+
+            customers.forEach((customer) => {
+                const option = document.createElement("option");
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+                customerSelect.appendChild(option);
+            });
+        }
+
+        // Chamar a função para buscar clientes ao carregar a página
+        fetchCustomers();
+    });
+</script>
+
+<!-- ====== MULTIPLOS BOLETOS ====== -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const paymentTypeSelect = document.getElementById("paymentType");
+        const boletoSection = document.getElementById("boletoSection");
+        const boletoFields = document.getElementById("boletoFields");
+        const addBoletoButton = document.getElementById("addBoleto");
+
+        // Mostra/oculta a seção de boletos com base no tipo de pagamento
+        paymentTypeSelect.addEventListener("change", function () {
+            if (this.value === "BO") {
+                boletoSection.style.display = "block";
+            } else {
+                boletoSection.style.display = "none";
+                boletoFields.innerHTML = ""; // Remove boletos existentes
+            }
+        });
+
+        // Adiciona campos para boletos
+        addBoletoButton.addEventListener("click", function () {
+            const boletoField = `
+                <div class="row mb-2 boleto-entry">
+                    <div class="col-md-6">
+                        <label class="form-label">Data de Vencimento</label>
+                        <input type="date" class="form-control" name="boleto_due_date[]" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Valor</label>
+                        <input type="number" class="form-control" name="boleto_amount[]" step="0.01" required>
+                    </div>
+                </div>
+            `;
+            boletoFields.insertAdjacentHTML("beforeend", boletoField);
+        });
+    });
+</script>
+
+
+<!-- =========== PROCESSAMENTO DO FORMULARIO ========= --> 
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let products = {{ products|safe }};
+        let selectedPreProducts = document.querySelector("#selectedPreProducts");
+        let installments = [];
+
+        function renderSelectedProducts() {
+            selectedPreProducts.innerHTML = products.map(product => `
+                <tr>
+                    <td>${product.name}</td>
+                    <td><input type="number" class="form-control form-control-sm" value="${product.quantity}" onchange="updateQuantity(${product.id}, this.value)" /></td>
+                    <td><input type="number" class="form-control form-control-sm" value="${product.price}" onchange="updatePrice(${product.id}, this.value)" /></td>
+                    <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button></td>
+                </tr>
+            `).join("");
+        }
+
+        window.updateQuantity = function (id, value) {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                product.quantity = parseFloat(value);
+                renderSelectedProducts();
+            }
+        };
+
+        window.updatePrice = function (id, value) {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                product.price = parseFloat(value);
+                renderSelectedProducts();
+            }
+        };
+
+        window.removeProduct = function (id) {
+            products = products.filter(p => p.id !== id);
+            renderSelectedProducts();
+        };
+
+        renderSelectedProducts();
+
+        document.querySelector("#editQuoteForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const quote_id = document.querySelector("#quote_id").value;
+            const name = document.querySelector("#name").value.trim();
+            const nfe = document.querySelector("#nfe").value.trim();
+            const customer = document.querySelector("[name='customer']").value;
+            const payment_type = document.querySelector("#payment_type").value;
+            const is_quote = document.querySelector("#is_quote").checked;
+
+            const updatedQuote = {
+                name,
+                nfe,
+                customer,
+                payment_type,
+                is_quote,
+                products,
+                installments
+            };
+
+            try {
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+                const response = await fetch(`/api/quote/edit/${quote_id}/`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify(updatedQuote),
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("Orçamento atualizado com sucesso!");
+                    window.location.href = "/"; // Volta para a home
+                } else {
+                    alert(`Erro ao atualizar orçamento: ${result.error}`);
+                }
+            } catch (error) {
+                console.error("Erro ao atualizar orçamento:", error);
+                alert("Erro ao atualizar orçamento.");
+            }
+        });
+    });
+</script>
+{% endblock %}

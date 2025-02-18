@@ -490,6 +490,60 @@ def convert_quote_to_sale(request, sale_id):
     
     except Exception as e:
         return JsonResponse({"success": False, "message": f"Erro ao converter: {str(e)}"}, status=400)
+    
+@login_required
+def edit_quote(request, quote_id):
+    quote = get_object_or_404(Sale, id=quote_id, is_quote=True)
+
+    products = [
+        {
+            "id": sp.product.id if sp.product else None,
+            "name": sp.product.name if sp.product else sp.product_info,
+            "quantity": float(sp.quantity),
+            "price": float(sp.price),
+        }
+        for sp in quote.sale_products.all()
+    ]
+
+    context = {
+        "quote": quote,
+        "products": json.dumps(products),
+        "customers": Customer.objects.all(),
+    }
+    return render(request, "pages/edit_quote.html", context)
+
+
+@csrf_exempt
+@login_required
+def update_quote(request, quote_id):
+    if request.method == "PUT":
+        try:
+            quote = get_object_or_404(Sale, id=quote_id, is_quote=True)
+            data = json.loads(request.body)
+
+            quote.name = data.get("name", quote.name)
+            quote.nfe = data.get("nfe", quote.nfe)
+            quote.customer = get_object_or_404(Customer, id=data.get("customer"))
+            quote.is_quote = data.get("is_quote", quote.is_quote)
+            quote.save()
+
+            # Atualiza os produtos
+            quote.sale_products.all().delete()
+            for product in data.get("products", []):
+                product_obj = get_object_or_404(Product, id=product["id"])
+                SaleProduct.objects.create(
+                    sale=quote,
+                    product=product_obj,
+                    quantity=Decimal(product["quantity"]),
+                    price=Decimal(product["price"]),
+                )
+
+            return JsonResponse({"success": True, "message": "Orçamento atualizado com sucesso!"})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
 
 
 @csrf_exempt
@@ -610,6 +664,29 @@ def delete_purchase(request, purchase_id):
 
 @csrf_exempt
 @login_required
+def delete_purchase(request, purchase_id):
+    if request.method == "DELETE":
+        try:
+            purchase = get_object_or_404(Purchase, id=purchase_id)
+
+            # Reembolsar o estoque
+            for purchase_product in purchase.purchase_products.all():
+                if purchase_product.product:
+                    stock = Stock.objects.filter(product=purchase_product.product).first()
+                    if stock:
+                        stock.quantity += purchase_product.quantity
+                        stock.save(update_fields=["quantity"])
+
+            purchase.delete()
+            return JsonResponse({"success": True, "message": "Compra deletada com sucesso."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+
+@csrf_exempt
+@login_required
 def update_stock(request, stock_id):
     if request.method == "POST":
         try:
@@ -668,6 +745,7 @@ def pay_boleto(request, boleto_id):
         boleto.save()
         return JsonResponse({"message": "Boleto marcado como pago com sucesso.", "boleto_id": boleto.id})
     return JsonResponse({"error": "Método não permitido."}, status=405)
+
 
 # ======================== RELATORIOS =======================================
 

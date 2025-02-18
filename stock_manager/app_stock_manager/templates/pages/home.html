@@ -616,9 +616,13 @@
                     const li = document.createElement("li");
                     li.classList.add("list-group-item", "d-flex", "justify-content-between", "align-items-center");
                     li.innerHTML = `
-                        <span>${quote.name} - Cliente: ${quote.customer_name || "N/A"} - R$ ${quote.full_price.toFixed(2)}</span>
-                        <button class="btn btn-sm btn-success" onclick="showConvertModal(${quote.id})">Converter em Venda</button>
-                    `;
+                    <span>${quote.name} - Cliente: ${quote.customer_name || "N/A"} - R$ ${quote.full_price.toFixed(2)}</span>
+                    <span>
+                    <button class="btn btn-sm btn-primary" onclick="window.location.href='/quote/edit/${quote.id}/'">Editar</button>
+                    <button class="btn btn-sm btn-success" onclick="showConvertModal(${quote.id})">Converter em Venda</button>
+                    </span>
+                `;
+                
                     quoteList.appendChild(li);
                 });
             } catch (error) {

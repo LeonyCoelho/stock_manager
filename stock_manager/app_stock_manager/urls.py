@@ -30,6 +30,10 @@ urlpatterns = [
     path('purchases/', views.view_purchases, name='view_purchases'),
     path('purchases/new/', views.new_purchase, name='new_purchase'),
     path("purchase/delete/<int:purchase_id>/", views.delete_purchase, name="delete_purchase"),
+    path("quote/edit/<int:quote_id>/", views.edit_quote, name="edit_quote"),
+    path("quote/edit/<int:quote_id>/", views.edit_quote, name="edit_quote"),
+    path("api/quote/edit/<int:quote_id>/", views.update_quote, name="update_quote"),
+
 
     # ========== POST API =====================================================
     path('add-customer/', views.add_customer, name='add_customer'),
