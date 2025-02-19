@@ -494,23 +494,44 @@ def convert_quote_to_sale(request, sale_id):
 @login_required
 def edit_quote(request, quote_id):
     quote = get_object_or_404(Sale, id=quote_id, is_quote=True)
+    
+    boletos = list(
+        quote.boletos.values("due_date", "value")
+    )
+    
+    # ✅ Converte `due_date` para string e `value` para float antes de serializar
+    for boleto in boletos:
+        boleto["due_date"] = boleto["due_date"].strftime("%Y-%m-%d") if boleto["due_date"] else None
+        boleto["value"] = float(boleto["value"])  # ✅ Converte Decimal para float
 
     products = [
         {
             "id": sp.product.id if sp.product else None,
             "name": sp.product.name if sp.product else sp.product_info,
-            "quantity": float(sp.quantity),
-            "price": float(sp.price),
+            "quantity": float(sp.quantity),  # ✅ Converte Decimal para float
+            "price": float(sp.price),  # ✅ Converte Decimal para float
         }
         for sp in quote.sale_products.all()
     ]
+
+    # ✅ Adiciona os dados do orçamento ao contexto
+    quote_data = {
+        "name": quote.name,
+        "nfe": quote.nfe,
+        "payment_type": quote.payment_type,
+        "customer_id": quote.customer.id if quote.customer else None,
+        "observations": quote.observations if quote.observations else None,
+    }
 
     context = {
         "quote": quote,
         "products": json.dumps(products),
         "customers": Customer.objects.all(),
+        "boletos": json.dumps(boletos),  # ✅ Agora JSON-serializável
+        "quote_data": json.dumps(quote_data),  # ✅ Passa os dados do orçamento para o template
     }
     return render(request, "pages/edit_quote.html", context)
+
 
 
 @csrf_exempt

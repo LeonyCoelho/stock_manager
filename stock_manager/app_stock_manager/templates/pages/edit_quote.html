@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container">
     <div class="card mt-3">
-        <div class="card-header">Nova Venda</div>
+        <div class="card-header">Editar Venda</div>
         <div class="card-body">
             <form method="post" id="saleForm">
                 {% csrf_token %}
@@ -12,6 +12,7 @@
                         <label class="form-label">Nome:</label>
                         <input class="form-control" name="name" type="text" id="name" required />
                     </div>
+                    
                     <div class="mb-2 col-2">
                         <label class="form-label">Nº do pedido</label>
                         <input class="form-control" name="nfe" type="text" id="nfe" required />
@@ -22,31 +23,33 @@
                         <div class="mb-3">
                             <label for="paymentType" class="form-label">Tipo de Pagamento</label>
                             <select class="form-select" id="paymentType" name="payment_type" required>
-                                <option value="AV">À Vista</option>
-                                <option value="CR">Crédito</option>
-                                <option value="BO">Boleto</option>
-                            </select>
+                                <option value="AV" {% if quote.payment_type == "AV" %}selected{% endif %}>À Vista</option>
+                                <option value="CR" {% if quote.payment_type == "CR" %}selected{% endif %}>Crédito</option>
+                                <option value="BO" {% if quote.payment_type == "BO" %}selected{% endif %}>Boleto</option>
+                            </select>                            
                         </div>
                     </div>
 
                     <!-- Cliente -->
                     <div class="mb-2 col">
                         <label class="form-label">Cliente</label>
-                        <select class="form-select" name="customer" required>
+                        <select class="form-select" name="customer" id="customerSelect" required>
                             <option hidden selected disabled>Selecione</option>
-                            <!-- Os clientes devem renderizar aqui -->
+                            <!-- Os clientes serão renderizados aqui -->
                         </select>
                     </div>
                 </div>
 
                 <!-- Boleto -->
-                <div id="boletoFields" style="display: none;">
-                    <label for="installments" class="form-label">Parcelas</label>
-                    <div id="installmentsContainer">
-                        <!-- As parcelas serão adicionadas dinamicamente aqui -->
+                <div id="boletoSection" style="display: none;">
+                    <label class="form-label">Parcelas</label>
+                    <div id="boletoFields">
+                        <!-- Os boletos existentes serão inseridos aqui -->
                     </div>
-                    <button type="button" class="btn btn-sm btn-primary mt-2" id="addInstallment">Adicionar Parcela</button>
+                    <button type="button" class="btn btn-sm btn-primary mt-2" id="addBoleto">Adicionar Parcela</button>
                 </div>
+                
+                
 
 
                 <!-- Campo de busca para produtos -->
@@ -85,7 +88,7 @@
 
                 <!-- Observações -->
                 <label class="form-label">Observações</label>
-                <textarea class="form-control" name="observations" rows="4"></textarea>
+                <textarea class="form-control" id="observations" name="observations" rows="4"></textarea>
 
                 <!-- Botão de enviar -->
                 <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote">
@@ -261,37 +264,151 @@
 <!-- ====== MULTIPLOS BOLETOS ====== -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const paymentTypeSelect = document.getElementById("paymentType");
-        const boletoSection = document.getElementById("boletoSection");
-        const boletoFields = document.getElementById("boletoFields");
-        const addBoletoButton = document.getElementById("addBoleto");
+    const paymentTypeSelect = document.getElementById("paymentType");
+    const boletoSection = document.getElementById("boletoSection");
+    const boletoFields = document.getElementById("boletoFields");
+    const addBoletoButton = document.getElementById("addBoleto");
 
-        // Mostra/oculta a seção de boletos com base no tipo de pagamento
-        paymentTypeSelect.addEventListener("change", function () {
-            if (this.value === "BO") {
-                boletoSection.style.display = "block";
-            } else {
-                boletoSection.style.display = "none";
-                boletoFields.innerHTML = ""; // Remove boletos existentes
-            }
+    let savedBoletos = {{ boletos|safe }};  // Garante que os boletos sejam carregados via Django
+
+    if (!paymentTypeSelect || !boletoSection || !boletoFields || !addBoletoButton) {
+        console.error("Erro: Um ou mais elementos do boleto não foram encontrados.");
+        return;
+    }
+
+    // 🔹 Renderiza os boletos já existentes na página
+    function renderBoletos() {
+        boletoFields.innerHTML = ""; // Limpa antes de renderizar
+
+        savedBoletos.forEach((boleto, index) => {
+            addBoletoField(boleto.due_date, boleto.value, index);
         });
 
-        // Adiciona campos para boletos
-        addBoletoButton.addEventListener("click", function () {
-            const boletoField = `
-                <div class="row mb-2 boleto-entry">
-                    <div class="col-md-6">
-                        <label class="form-label">Data de Vencimento</label>
-                        <input type="date" class="form-control" name="boleto_due_date[]" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Valor</label>
-                        <input type="number" class="form-control" name="boleto_amount[]" step="0.01" required>
-                    </div>
+        if (savedBoletos.length > 0) {
+            boletoSection.style.display = "block";
+            boletoFields.style.display = "block";
+        }
+    }
+
+    // 🔹 Adiciona um novo boleto ao DOM e à lista de boletos
+    function addBoletoField(dueDate = "", value = "", index = null) {
+        const boletoIndex = index !== null ? index : savedBoletos.length;
+        const boletoField = `
+            <div class="row mb-2 boleto-entry" id="boleto-${boletoIndex}" data-index="${boletoIndex}">
+                <div class="col-md-5">
+                    <label class="form-label">Data de Vencimento</label>
+                    <input type="date" class="form-control" name="boleto_due_date[]" value="${dueDate}" required>
                 </div>
-            `;
-            boletoFields.insertAdjacentHTML("beforeend", boletoField);
-        });
+                <div class="col-md-5">
+                    <label class="form-label">Valor</label>
+                    <input type="number" class="form-control" name="boleto_amount[]" value="${value}" step="0.01" required>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-boleto" data-index="${boletoIndex}">
+                        Remover
+                    </button>
+                </div>
+            </div>
+        `;
+        boletoFields.insertAdjacentHTML("beforeend", boletoField);
+    }
+
+    // 🔹 Remove um boleto pelo índice correto
+    window.removeBoleto = function (index) {
+        savedBoletos = savedBoletos.filter((_, i) => i !== index); // Remove do array
+        renderBoletos(); // Atualiza a exibição
+    };
+
+    // 🔹 Adiciona evento aos botões de remoção quando os boletos forem renderizados
+    document.addEventListener("click", function (event) {
+        if (event.target.classList.contains("remove-boleto")) {
+            const index = parseInt(event.target.getAttribute("data-index"), 10);
+            removeBoleto(index);
+        }
     });
+
+    // 🔹 Mostra ou oculta a seção de boletos dependendo da forma de pagamento
+    paymentTypeSelect.addEventListener("change", function () {
+        if (this.value === "BO") {
+            boletoSection.style.display = "block";
+        } else {
+            boletoSection.style.display = "none";
+            boletoFields.innerHTML = ""; // Remove boletos existentes ao trocar de pagamento
+        }
+    });
+
+    // 🔹 Adiciona um novo boleto ao clicar no botão
+    addBoletoButton.addEventListener("click", function () {
+        savedBoletos.push({ due_date: "", value: "" }); // Adiciona novo boleto ao array
+        renderBoletos();
+    });
+
+    // 🔥 Renderiza boletos existentes ao carregar a página
+    renderBoletos();
+});
+
+    
+    
+</script>
+<!-- ====== DEMAIS CAMPOS ====== -->
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const nameField = document.getElementById("name");
+        const nfeField = document.getElementById("nfe");
+        const observationsField = document.getElementById("observations");
+        const paymentTypeField = document.getElementById("paymentType");
+        const customerSelect = document.querySelector("[name='customer']");
+    
+        // ❗️ Pega os dados do orçamento passados pelo Django
+        const quoteData = JSON.parse("{{ quote_data|escapejs }}");
+    
+        // ✅ Preenche os campos do formulário com os dados do orçamento
+        function populateFields() {
+            if (quoteData) {
+                nameField.value = quoteData.name || "";
+                observationsField.value = quoteData.observations || "";
+                nfeField.value = quoteData.nfe || "";
+                paymentTypeField.value = quoteData.payment_type || "";
+    
+                // ✅ Aguarda os clientes serem carregados antes de selecionar
+                fetchCustomers().then(() => {
+                    if (quoteData.customer_id) {
+                        customerSelect.value = quoteData.customer_id;
+                    }
+                });
+            }
+        }
+    
+        // ✅ Busca os clientes da API e mantém apenas um select
+        async function fetchCustomers() {
+            try {
+                const response = await fetch("/api/customers/");
+                const data = await response.json();
+                const customers = data.customers || [];
+                renderCustomerOptions(customers);
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+    
+        // ✅ Renderiza a lista de clientes sem duplicação
+        function renderCustomerOptions(customers) {
+            customerSelect.innerHTML = `<option hidden selected disabled>Selecione</option>`;
+    
+            customers.forEach((customer) => {
+                const isSelected = quoteData.customer_id === customer.id;
+                const option = document.createElement("option");
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+                if (isSelected) option.selected = true;
+                customerSelect.appendChild(option);
+            });
+        }
+    
+        // ✅ Inicializa os dados da página
+        populateFields();
+    });
+    
 </script>
 {% endblock %}
