@@ -91,10 +91,11 @@
                 <textarea class="form-control" id="observations" name="observations" rows="4"></textarea>
 
                 <!-- Botão de enviar -->
-                <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote">
+                <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" {% if quote.is_quote %}checked{% endif %}>
                 <label class="form-check-label" for="is_quote">
                     Salvar como orçamento
                 </label>
+
                 
                 <button type="submit" class="btn btn-primary mt-3">Salvar</button>
                 
@@ -134,25 +135,26 @@
         }
     
         // Renderiza a lista de produtos adicionados
-        function renderSelectedProducts() {
-            selectedProductsContainer.innerHTML = addedProducts.map(product => `
-                <tr>
-                    <td>${product.name}</td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm" value="${product.quantity}" min="1"
-                            onchange="updateQuantity(${product.id}, this.value)" />
-                    </td>
-                    <td>
-                        <input type="number" class="form-control form-control-sm" value="${product.price}" min="0"
-                            step="0.01" onchange="updatePrice(${product.id}, this.value)" />
-                    </td>
-                    <td>R$ ${product.subtotal.toFixed(2)}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button>
-                    </td>
-                </tr>
-            `).join("");
-        }
+            function renderSelectedProducts() {
+                selectedProducts.innerHTML = addedProducts.map(product => `
+                    <tr data-product-id="${product.id}">
+                        <td>${product.name}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="quantity" value="${product.quantity}" min="1"
+                                onchange="updateQuantity(${product.id}, this.value)" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="price" value="${product.price}" min="0"
+                                step="0.01" onchange="updatePrice(${product.id}, this.value)" />
+                        </td>
+                        <td>R$ ${product.subtotal.toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+
     
         // Atualiza a quantidade do produto
         window.updateQuantity = function (productId, newQuantity) {
@@ -221,10 +223,7 @@
         // Renderiza os produtos carregados inicialmente
         updateTotals();
     });
-    </script>
-    
-
-
+</script>
 <!-- ====== API BUSCAR CLIENTES ======= -->
 <script aria-disabled="true">
     document.addEventListener("DOMContentLoaded", function () {
@@ -264,88 +263,88 @@
 <!-- ====== MULTIPLOS BOLETOS ====== -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-    const paymentTypeSelect = document.getElementById("paymentType");
-    const boletoSection = document.getElementById("boletoSection");
-    const boletoFields = document.getElementById("boletoFields");
-    const addBoletoButton = document.getElementById("addBoleto");
+        const paymentTypeSelect = document.getElementById("paymentType");
+        const boletoSection = document.getElementById("boletoSection");
+        const boletoFields = document.getElementById("boletoFields");
+        const addBoletoButton = document.getElementById("addBoleto");
 
-    let savedBoletos = {{ boletos|safe }};  // Garante que os boletos sejam carregados via Django
+        let savedBoletos = {{ boletos|safe }};  // Garante que os boletos sejam carregados via Django
 
-    if (!paymentTypeSelect || !boletoSection || !boletoFields || !addBoletoButton) {
-        console.error("Erro: Um ou mais elementos do boleto não foram encontrados.");
-        return;
-    }
+        if (!paymentTypeSelect || !boletoSection || !boletoFields || !addBoletoButton) {
+            console.error("Erro: Um ou mais elementos do boleto não foram encontrados.");
+            return;
+        }
 
-    // 🔹 Renderiza os boletos já existentes na página
-    function renderBoletos() {
-        boletoFields.innerHTML = ""; // Limpa antes de renderizar
+        // 🔹 Renderiza os boletos já existentes na página
+        function renderBoletos() {
+            boletoFields.innerHTML = ""; // Limpa antes de renderizar
 
-        savedBoletos.forEach((boleto, index) => {
-            addBoletoField(boleto.due_date, boleto.value, index);
+            savedBoletos.forEach((boleto, index) => {
+                addBoletoField(boleto.due_date, boleto.value, index);
+            });
+
+            if (savedBoletos.length > 0) {
+                boletoSection.style.display = "block";
+                boletoFields.style.display = "block";
+            }
+        }
+
+        // 🔹 Adiciona um novo boleto ao DOM e à lista de boletos
+        function addBoletoField(dueDate = "", value = "", index = null) {
+            const boletoIndex = index !== null ? index : savedBoletos.length;
+            const boletoField = `
+                <div class="row mb-2 boleto-entry" id="boleto-${boletoIndex}" data-index="${boletoIndex}">
+                    <div class="col-md-5">
+                        <label class="form-label">Data de Vencimento</label>
+                        <input type="date" class="form-control" name="boleto_due_date[]" value="${dueDate}" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Valor</label>
+                        <input type="number" class="form-control" name="boleto_amount[]" value="${value}" step="0.01" required>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-boleto" data-index="${boletoIndex}">
+                            Remover
+                        </button>
+                    </div>
+                </div>
+            `;
+            boletoFields.insertAdjacentHTML("beforeend", boletoField);
+        }
+
+        // 🔹 Remove um boleto pelo índice correto
+        window.removeBoleto = function (index) {
+            savedBoletos = savedBoletos.filter((_, i) => i !== index); // Remove do array
+            renderBoletos(); // Atualiza a exibição
+        };
+
+        // 🔹 Adiciona evento aos botões de remoção quando os boletos forem renderizados
+        document.addEventListener("click", function (event) {
+            if (event.target.classList.contains("remove-boleto")) {
+                const index = parseInt(event.target.getAttribute("data-index"), 10);
+                removeBoleto(index);
+            }
         });
 
-        if (savedBoletos.length > 0) {
-            boletoSection.style.display = "block";
-            boletoFields.style.display = "block";
-        }
-    }
+        // 🔹 Mostra ou oculta a seção de boletos dependendo da forma de pagamento
+        paymentTypeSelect.addEventListener("change", function () {
+            if (this.value === "BO") {
+                boletoSection.style.display = "block";
+            } else {
+                boletoSection.style.display = "none";
+                boletoFields.innerHTML = ""; // Remove boletos existentes ao trocar de pagamento
+            }
+        });
 
-    // 🔹 Adiciona um novo boleto ao DOM e à lista de boletos
-    function addBoletoField(dueDate = "", value = "", index = null) {
-        const boletoIndex = index !== null ? index : savedBoletos.length;
-        const boletoField = `
-            <div class="row mb-2 boleto-entry" id="boleto-${boletoIndex}" data-index="${boletoIndex}">
-                <div class="col-md-5">
-                    <label class="form-label">Data de Vencimento</label>
-                    <input type="date" class="form-control" name="boleto_due_date[]" value="${dueDate}" required>
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label">Valor</label>
-                    <input type="number" class="form-control" name="boleto_amount[]" value="${value}" step="0.01" required>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-boleto" data-index="${boletoIndex}">
-                        Remover
-                    </button>
-                </div>
-            </div>
-        `;
-        boletoFields.insertAdjacentHTML("beforeend", boletoField);
-    }
+        // 🔹 Adiciona um novo boleto ao clicar no botão
+        addBoletoButton.addEventListener("click", function () {
+            savedBoletos.push({ due_date: "", value: "" }); // Adiciona novo boleto ao array
+            renderBoletos();
+        });
 
-    // 🔹 Remove um boleto pelo índice correto
-    window.removeBoleto = function (index) {
-        savedBoletos = savedBoletos.filter((_, i) => i !== index); // Remove do array
-        renderBoletos(); // Atualiza a exibição
-    };
-
-    // 🔹 Adiciona evento aos botões de remoção quando os boletos forem renderizados
-    document.addEventListener("click", function (event) {
-        if (event.target.classList.contains("remove-boleto")) {
-            const index = parseInt(event.target.getAttribute("data-index"), 10);
-            removeBoleto(index);
-        }
-    });
-
-    // 🔹 Mostra ou oculta a seção de boletos dependendo da forma de pagamento
-    paymentTypeSelect.addEventListener("change", function () {
-        if (this.value === "BO") {
-            boletoSection.style.display = "block";
-        } else {
-            boletoSection.style.display = "none";
-            boletoFields.innerHTML = ""; // Remove boletos existentes ao trocar de pagamento
-        }
-    });
-
-    // 🔹 Adiciona um novo boleto ao clicar no botão
-    addBoletoButton.addEventListener("click", function () {
-        savedBoletos.push({ due_date: "", value: "" }); // Adiciona novo boleto ao array
+        // 🔥 Renderiza boletos existentes ao carregar a página
         renderBoletos();
     });
-
-    // 🔥 Renderiza boletos existentes ao carregar a página
-    renderBoletos();
-});
 
     
     
@@ -411,4 +410,117 @@
     });
     
 </script>
+<!-- ====== PROCESSAMENTO DO FORMULARIO ====== -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const saleForm = document.getElementById("saleForm");
+        const paymentTypeSelect = document.getElementById("paymentType");
+        const boletoFields = document.getElementById("boletoFields");
+        const selectedProducts = document.getElementById("selectedProducts");
+        const isQuoteCheckbox = document.getElementById("is_quote");
+    
+        //let products = {{ products|safe }};  // Produtos já carregados do orçamento
+        //let addedProducts = [...products];  // Copia os produtos já existentes
+    
+        // Função para coletar os dados do formulário
+        // Função para coletar os dados do formulário
+        function collectFormData() {
+            const name = document.getElementById("name").value.trim();
+            const nfe = document.getElementById("nfe").value.trim();
+            const customer = document.querySelector("[name='customer']").value;
+            const paymentType = paymentTypeSelect.value;
+            const observations = document.getElementById("observations").value.trim();
+            const isQuote = document.getElementById("is_quote").checked;
+
+            // Coleta os produtos da tabela de produtos adicionados
+            const productsData = [];
+            document.querySelectorAll("#selectedProducts tr").forEach(row => {
+                const productId = row.getAttribute("data-product-id");
+                if (productId) {
+                    const quantity = row.querySelector("input[name='quantity']").value;
+                    const price = row.querySelector("input[name='price']").value;
+                    productsData.push({
+                        id: parseInt(productId),
+                        quantity: parseFloat(quantity),
+                        price: parseFloat(price),
+                    });
+                }
+            });
+    
+            // Coleta as parcelas (se for boleto)
+            const installments = [];
+            if (paymentType === "BO") {
+                document.querySelectorAll(".boleto-entry").forEach(boleto => {
+                    const dueDate = boleto.querySelector("input[name='boleto_due_date[]']").value;
+                    const value = boleto.querySelector("input[name='boleto_amount[]']").value;
+                    if (dueDate && value) {
+                        installments.push({ due_date: dueDate, value: value });
+                    }
+                });
+            }
+    
+            return {
+                name,
+                nfe,
+                customer,
+                payment_type: paymentType,
+                observations,
+                is_quote: isQuote,
+                products: productsData,
+                installments,
+            };
+        }
+    
+        // Envia o formulário para o backend
+        saleForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+    
+            const formData = collectFormData();
+            const quoteId = {{ quote.id }};  // ID do orçamento passado pelo Django
+    
+            try {
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+                const response = await fetch(`/quote/update/${quoteId}/`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify(formData),
+                });
+    
+                const result = await response.json();
+                if (result.success) {
+                    alert("Orçamento atualizado com sucesso!");
+                    location.reload();  // Recarrega a página para refletir as alterações
+                } else {
+                    alert(`Erro: ${result.error || result.message}`);
+                }
+            } catch (error) {
+                console.error("Erro ao enviar o formulário:", error);
+                alert("Erro ao atualizar o orçamento.");
+            }
+        });
+    });
+    
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 {% endblock %}

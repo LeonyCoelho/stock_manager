@@ -32,7 +32,7 @@ urlpatterns = [
     path("purchase/delete/<int:purchase_id>/", views.delete_purchase, name="delete_purchase"),
     path("quote/edit/<int:quote_id>/", views.edit_quote, name="edit_quote"),
     path("quote/edit/<int:quote_id>/", views.edit_quote, name="edit_quote"),
-    path("api/quote/edit/<int:quote_id>/", views.update_quote, name="update_quote"),
+    path("quote/update/<int:quote_id>/", views.update_quote, name="update_quote"),
 
 
     # ========== POST API =====================================================

@@ -542,14 +542,17 @@ def update_quote(request, quote_id):
             quote = get_object_or_404(Sale, id=quote_id, is_quote=True)
             data = json.loads(request.body)
 
+            # Atualiza os campos básicos do orçamento
             quote.name = data.get("name", quote.name)
             quote.nfe = data.get("nfe", quote.nfe)
             quote.customer = get_object_or_404(Customer, id=data.get("customer"))
+            quote.payment_type = data.get("payment_type", quote.payment_type)
+            quote.observations = data.get("observations", quote.observations)
             quote.is_quote = data.get("is_quote", quote.is_quote)
             quote.save()
 
-            # Atualiza os produtos
-            quote.sale_products.all().delete()
+            # Atualiza os produtos do orçamento
+            quote.sale_products.all().delete()  # Remove os produtos antigos
             for product in data.get("products", []):
                 product_obj = get_object_or_404(Product, id=product["id"])
                 SaleProduct.objects.create(
@@ -558,6 +561,17 @@ def update_quote(request, quote_id):
                     quantity=Decimal(product["quantity"]),
                     price=Decimal(product["price"]),
                 )
+
+            # Atualiza os boletos (se houver)
+            if data.get("payment_type") == "BO":
+                quote.boletos.all().delete()  # Remove os boletos antigos
+                for installment in data.get("installments", []):
+                    Boleto.objects.create(
+                        sale=quote,
+                        value=Decimal(installment["value"]),
+                        due_date=installment["due_date"],
+                        status="Pendente",
+                    )
 
             return JsonResponse({"success": True, "message": "Orçamento atualizado com sucesso!"})
 
