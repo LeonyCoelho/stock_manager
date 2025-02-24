@@ -279,7 +279,8 @@
             pageData.forEach((purchase, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${purchase.purchase_id}</td>
                         <td>${purchase.purchase_name}</td>
                         <td>${purchase.supplier_name}</td>
                         <td>${new Date(purchase.purchase_created).toLocaleString('pt-BR', {

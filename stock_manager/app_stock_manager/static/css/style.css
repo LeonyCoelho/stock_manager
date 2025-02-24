@@ -10,7 +10,7 @@ body{
 }
 
 .stock-list-container {
-  max-height: 200px; /* Define altura máxima */
+  height: 200px; /* Define altura máxima */
   overflow-y: auto;  /* Ativa a rolagem vertical */
   padding: 0;        /* Remove padding extra */
   margin: 0;         /* Remove margem extra */

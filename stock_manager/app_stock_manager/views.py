@@ -266,7 +266,7 @@ def add_customer(request):
                 cep=cep,
                 observations=observations,
             )
-            return JsonResponse({"message": "Cliente adicionado com sucesso!", "id": customer.id})
+            return redirect('view_customers')
         except Exception as e:
             return JsonResponse({"error": f"Erro ao salvar cliente: {str(e)}"}, status=500)
     else:
@@ -288,7 +288,7 @@ def add_supplier(request):
                 cnpj=cnpj,
                 observations=observations,
             )
-            return JsonResponse({"message": "Fornecedor adicionado com sucesso!", "id": supplier.id})
+            return redirect('view_suppliers')
         except Exception as e:
             return JsonResponse({"error": f"Erro ao salvar fornecedor: {str(e)}"}, status=500)
     else:

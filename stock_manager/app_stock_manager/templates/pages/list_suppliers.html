@@ -88,7 +88,8 @@
             pageData.forEach((supplier, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${supplier.id}</td>
                         <td>${supplier.name}</td>
                         <td>${supplier.cnpj}</td>
                         <td>
@@ -216,7 +217,8 @@
             pageData.forEach((supplier, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${supplier.id}</td>
                         <td>${supplier.name}</td>
                         <td>${supplier.cnpj}</td>
                         <td>

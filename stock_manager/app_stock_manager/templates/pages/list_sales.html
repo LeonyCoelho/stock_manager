@@ -90,7 +90,8 @@
             pageData.forEach((sale, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${sale.sale_id}</td>
                         <td>${sale.sale_name}</td>
                         <td>${sale.nfe}</td>
                         <td>${sale.customer_name}</td>

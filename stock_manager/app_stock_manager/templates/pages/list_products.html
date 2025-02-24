@@ -255,7 +255,8 @@
             pageData.forEach((product, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${product.id}</td>
                         <td>${product.name}</td>
                         <td>${product.weight} ${product.unit_type}</td>
                         <td>${product.size}</td>

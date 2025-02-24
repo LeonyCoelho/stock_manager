@@ -77,7 +77,7 @@
                 renderTable();
                 renderPagination();
             } catch (error) {
-                console.error("Erro ao buscar clientes:", error);
+                console.error("Erro ao buscar clientes:", ernameror);
             }
         }
 
@@ -93,7 +93,8 @@
             pageData.forEach((customer, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${customer.id}</td>
                         <td>${customer.name}</td>
                         <td>${customer.cpf_or_cnpj}</td>
                         <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>
@@ -227,7 +228,8 @@
             pageData.forEach((customer, index) => {
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${customer.id}</td>
                         <td>${customer.name}</td>
                         <td>${customer.cpf_or_cnpj}</td>
                         <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>

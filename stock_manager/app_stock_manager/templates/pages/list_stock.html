@@ -316,7 +316,8 @@ document.addEventListener("DOMContentLoaded", function () {
     
                 const row = `
                     <tr>
-                        <td>${start + index + 1}</td>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${stock.product_id}</td>
                         <td>${productName}</td>
                         <td>${stock.quantity} ${badge}</td>
                         <td>R$ ${price.toFixed(2)}</td>
