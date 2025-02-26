@@ -549,6 +549,7 @@ def update_quote(request, quote_id):
             quote.payment_type = data.get("payment_type", quote.payment_type)
             quote.observations = data.get("observations", quote.observations)
             quote.is_quote = data.get("is_quote", quote.is_quote)
+            quote.full_price = Decimal(data.get("full_price", quote.full_price))
             quote.save()
 
             # Atualiza os produtos do orçamento

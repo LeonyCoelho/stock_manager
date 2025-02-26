@@ -91,10 +91,12 @@
                 <textarea class="form-control" id="observations" name="observations" rows="4"></textarea>
 
                 <!-- Botão de enviar -->
-                <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" {% if quote.is_quote %}checked{% endif %}>
-                <label class="form-check-label" for="is_quote">
-                    Salvar como orçamento
-                </label>
+                <div class="form-check form-switch" hidden>
+                    <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" {% if quote.is_quote %}checked{% endif %}>
+                    <label class="form-check-label" for="is_quote">
+                        Salvar como orçamento
+                    </label>
+                  </div>
 
                 
                 <button type="submit" class="btn btn-primary mt-3">Salvar</button>
@@ -433,12 +435,16 @@
             const isQuote = document.getElementById("is_quote").checked;
 
             // Coleta os produtos da tabela de produtos adicionados
+            let totalPrice = 0;
             const productsData = [];
             document.querySelectorAll("#selectedProducts tr").forEach(row => {
                 const productId = row.getAttribute("data-product-id");
                 if (productId) {
                     const quantity = row.querySelector("input[name='quantity']").value;
                     const price = row.querySelector("input[name='price']").value;
+                    const subtotal = quantity * price;
+                    totalPrice += subtotal;
+
                     productsData.push({
                         id: parseInt(productId),
                         quantity: parseFloat(quantity),
@@ -468,6 +474,7 @@
                 is_quote: isQuote,
                 products: productsData,
                 installments,
+                full_price: totalPrice.toFixed(2),  // ✅ Adicionado o valor total
             };
         }
     
