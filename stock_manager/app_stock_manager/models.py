@@ -88,6 +88,8 @@ class Stock(models.Model):
 class Sale(models.Model):
     PAYMENT_TYPES = [
         ('AV', 'À Vista'),
+        ('PX', 'PIX'),
+        ('DB', 'Debito'),
         ('CR', 'Crédito'),
         ('BO', 'Boleto'),
     ]

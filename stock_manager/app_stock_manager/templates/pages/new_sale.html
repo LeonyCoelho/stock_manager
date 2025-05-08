@@ -7,7 +7,7 @@
     <div class="card mt-3">
         <div class="card-header">Nova Venda</div>
         <div class="card-body">
-            <form method="post" id="saleForm">
+            <form method="post" action="/api/create_leito/">
                 {% csrf_token %}
                 <div class="row">
                     <!-- Nome da Venda -->
@@ -26,6 +26,8 @@
                             <label for="paymentType" class="form-label">Tipo de Pagamento</label>
                             <select class="form-select" id="paymentType" name="payment_type" required>
                                 <option value="AV">À Vista</option>
+                                <option value="PX">PIX</option>
+                                <option value="DB">Débito</option>
                                 <option value="CR">Crédito</option>
                                 <option value="BO">Boleto</option>
                             </select>
