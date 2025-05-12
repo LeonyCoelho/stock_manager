@@ -1282,6 +1282,12 @@ def get_all_customers(request):
             Q(cpf_or_cnpj__icontains=query)  # Busca pelo CPF/CNPJ
         )
 
+    # Coleta IDs de clientes com boletos vencidos
+    today = now().date()
+    boletos_vencidos = Boleto.objects.filter(status="Pendente", due_date__lt=today)
+    clientes_com_vencidos = set(boletos_vencidos.values_list("sale__customer_id", flat=True))
+
+
     customer_list = [{
         'id': customer.id,
         'name': customer.name,
@@ -1294,6 +1300,8 @@ def get_all_customers(request):
         'state': customer.state,
         'cep': customer.cep,
         'observations': customer.observations,
+        'has_overdue_boleto': customer.id in clientes_com_vencidos
+
     } for customer in customers]
 
     return JsonResponse({'customers': customer_list})
@@ -1518,27 +1526,35 @@ def get_summary(request):
     start_of_week = today - timedelta(days=today.weekday())
     start_of_month = today.replace(day=1)
 
-    # Filtrar apenas vendas concretizadas (is_quote=False)
+    # Vendas confirmadas
     daily_sales = Sale.objects.filter(created__date=today, is_quote=False)
     daily_purchases = Purchase.objects.filter(created__date=today)
+
     weekly_sales = Sale.objects.filter(created__date__gte=start_of_week, is_quote=False)
     weekly_purchases = Purchase.objects.filter(created__date__gte=start_of_week)
+
     monthly_sales = Sale.objects.filter(created__date__gte=start_of_month, is_quote=False)
     monthly_purchases = Purchase.objects.filter(created__date__gte=start_of_month)
 
-    # Função auxiliar para calcular resumo
     def calculate_summary(sales, purchases):
         sales_products = SaleProduct.objects.filter(sale__in=sales)
         purchases_products = PurchaseProduct.objects.filter(purchase__in=purchases)
 
+        sales_total = sales.aggregate(total=Sum('full_price'))['total'] or 0
+        purchases_total = purchases.aggregate(total=Sum('full_price'))['total'] or 0
+        products_sold = sales_products.aggregate(total=Sum('quantity'))['total'] or 0
+        products_purchased = purchases_products.aggregate(total=Sum('quantity'))['total'] or 0
+
+        profit = sales_total - purchases_total  # LUCRO BRUTO
+
         return {
-            'sales_total': sales.aggregate(total=Sum('full_price'))['total'] or 0,
-            'products_sold': sales_products.aggregate(total=Sum('quantity'))['total'] or 0,
-            'purchases_total': purchases.aggregate(total=Sum('full_price'))['total'] or 0,
-            'products_purchased': purchases_products.aggregate(total=Sum('quantity'))['total'] or 0,
+            'sales_total': sales_total,
+            'purchases_total': purchases_total,
+            'products_sold': products_sold,
+            'products_purchased': products_purchased,
+            'profit': profit,
         }
 
-    # Resumo diário, semanal e mensal
     data = {
         'daily': calculate_summary(daily_sales, daily_purchases),
         'weekly': calculate_summary(weekly_sales, weekly_purchases),
@@ -1586,12 +1602,15 @@ def get_boletos_pendentes(request):
     # Pré-carregar os dados relacionados para evitar consultas extras
     boletos = boletos_pendentes.select_related("sale__customer", "sale__user")
 
+    today = now().date()
+
     # Construir a lista de boletos
     boletos_list = [
         {
             "boleto_id": boleto.id,
             "valor": f"R$ {boleto.value:.2f}",
             "data_vencimento": boleto.due_date.strftime('%d/%m/%Y'),
+            "vencido": boleto.due_date < today,  # alerta de vencimento
             "venda": {
                 "venda_id": boleto.sale.id,
                 "nome": boleto.sale.name,
@@ -1645,3 +1664,26 @@ def get_all_quotes(request):
     } for quote in quotes]
 
     return JsonResponse({"quotes": quote_list})
+
+def get_product_prices(request, product_id):
+    try:
+        # Últimos 5 preços de venda
+        sales = list(
+            SaleProduct.objects.filter(product_id=product_id)
+            .order_by('-id')[:5]
+            .values('price', 'quantity', 'sale__created')
+        )
+
+        # Últimos 5 preços de compra
+        purchases = list(
+            PurchaseProduct.objects.filter(product_id=product_id)
+            .order_by('-id')[:5]
+            .values('price', 'quantity', 'purchase__created')
+        )
+
+        return JsonResponse({
+            "sales": sales,
+            "purchases": purchases
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({"error": "Produto não encontrado"}, status=404)

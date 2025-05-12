@@ -7,7 +7,7 @@
     <div class="card mt-3">
         <div class="card-header">Nova Venda</div>
         <div class="card-body">
-            <form method="post" action="/api/create_leito/">
+            <form method="post" id="saleForm">
                 {% csrf_token %}
                 <div class="row">
                     <!-- Nome da Venda -->

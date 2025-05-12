@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/suppliers/', views.get_all_suppliers, name='get_all_suppliers'),
     path('api/products/', views.get_all_products, name='get_all_products'),
     path('api/products/search/', views.api_products, name='api_products'),
+    path('api/products/<int:product_id>/prices/', views.get_product_prices, name='product-prices'),
     path('api/unit-types/', views.get_unit_types, name='get_unit_types'),
     path('api/stocks/', views.get_all_stocks, name='get_all_stocks'),
     path('api/sales/', views.get_all_sales, name='get_all_sales'),
@@ -66,5 +67,6 @@ urlpatterns = [
     path('api/purchases/latest/', views.get_latest_purchases, name='api_latest_purchases'),
     path('api/boletos-pendentes/', views.get_boletos_pendentes, name='boletos_pendentes'),
     path('api/negative-stocks/', views.get_negative_stocks, name='get_negative_stocks'),
+
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

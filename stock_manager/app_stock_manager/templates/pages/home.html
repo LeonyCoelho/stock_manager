@@ -160,6 +160,7 @@
                     <p class="card-text">Produtos Vendidos: <span id="dailySoldProducts">0</span></p>
                     <p class="card-text">Compras: <span id="dailyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="dailyPurchasedProducts">0</span></p>
+                    <p class="card-text">Lucro Bruto: <span id="dailyProfit">0</span></p>
                 </div>
             </div>
         </div>
@@ -171,6 +172,8 @@
                     <p class="card-text">Produtos Vendidos: <span id="weeklySoldProducts">0</span></p>
                     <p class="card-text">Compras: <span id="weeklyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="weeklyPurchasedProducts">0</span></p>
+                    <p class="card-text">Lucro Bruto: <span id="weeklyProfit">0</span></p>
+
                 </div>
             </div>
         </div>
@@ -182,6 +185,7 @@
                     <p class="card-text">Produtos Vendidos: <span id="monthlySoldProducts">0</span></p>
                     <p class="card-text">Compras: <span id="monthlyPurchasesTotal">0.00</span></p>
                     <p class="card-text">Produtos Comprados: <span id="monthlyPurchasedProducts">0</span></p>
+                    <p class="card-text">Lucro Bruto: <span id="monthlyProfit">0</span></p>
                 </div>
             </div>
         </div>
@@ -262,16 +266,19 @@
                 document.querySelector("#dailySoldProducts").textContent = `${Number(data.daily.products_sold)}`;
                 document.querySelector("#dailyPurchasesTotal").textContent = `R$ ${Number(data.daily.purchases_total).toFixed(2)}`;
                 document.querySelector("#dailyPurchasedProducts").textContent = `${Number(data.daily.products_purchased) || 0}`;
+                document.querySelector("#dailyProfit").textContent = `${Number(data.daily.profit) || 0}`;
                 
                 document.querySelector("#weeklySalesTotal").textContent = `R$ ${Number(data.weekly.sales_total).toFixed(2)}`;
                 document.querySelector("#weeklySoldProducts").textContent = `${Number(data.weekly.products_sold)}`;
                 document.querySelector("#weeklyPurchasesTotal").textContent = `R$ ${Number(data.weekly.purchases_total).toFixed(2)}`;
                 document.querySelector("#weeklyPurchasedProducts").textContent = `${Number(data.weekly.products_purchased) || 0}`;
+                document.querySelector("#weeklyProfit").textContent = `${Number(data.weekly.profit) || 0}`;
                 
                 document.querySelector("#monthlySalesTotal").textContent = `R$ ${Number(data.monthly.sales_total).toFixed(2)}`;
                 document.querySelector("#monthlySoldProducts").textContent = `${Number(data.monthly.products_sold)}`;
                 document.querySelector("#monthlyPurchasesTotal").textContent = `R$ ${Number(data.monthly.purchases_total).toFixed(2)}`;
                 document.querySelector("#monthlyPurchasedProducts").textContent = `${Number(data.monthly.products_purchased) || 0}`;
+                document.querySelector("#monthlyProfit").textContent = `${Number(data.monthly.profit) || 0}`;
             } catch (error) {
                 console.error("Erro ao buscar resumo:", error);
             }
@@ -369,18 +376,23 @@
                 const vendaData = vendasMap.get(venda.venda_id);
                 vendaData.boletos.push(boleto);
                 vendaData.total_boletos++;
+                
 
                 if (boleto.valor && parseFloat(boleto.valor.replace("R$", "").trim()) > 0) {
                     vendaData.total_boletos_pendentes++;
                     vendaData.valor_total_pendentes += parseFloat(boleto.valor.replace("R$", "").trim());
                 }
             });
+            
 
             vendasMap.forEach((vendaData, vendaId) => {
+
+                const hasVencido = vendaData.boletos.some(b => b.vencido === true);
+
                 const row = `
                     <tr>
                         <td>${vendaData.venda_id}</td>
-                        <td>${vendaData.nome}</td>
+                        <td>${vendaData.nome}${hasVencido ? '<span class="badge bg-danger ms-2">Contém vencidos</span>' : ''}</td>
                         <td>${vendaData.data_venda}</td>
                         <td>${vendaData.total_boletos_pendentes}</td>
                         <td>R$ ${vendaData.valor_total_pendentes.toFixed(2)}</td>
@@ -408,6 +420,7 @@
                                             <tr>
                                                 <th>ID</th>
                                                 <th>Vencimento</th>
+                                                <th>Vencido</th>
                                                 <th>Valor</th>
                                                 <th>Status</th>
                                                 <th></th>
@@ -422,6 +435,7 @@
                                                     <tr>
                                                         <td>${boleto.boleto_id}</td>
                                                         <td>${boleto.data_vencimento}</td>
+                                                        <td>${boleto.vencido ? '<span class="badge bg-danger ms-2">Vencido</span>' : ''}</td>                                            </td>
                                                         <td>R$ ${valor}</td>
                                                         <td>${status}</td>
                                                         <td>

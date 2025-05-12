@@ -80,6 +80,9 @@
                         <td>${product.size}</td>
                         <td>${product.quantity_per_package}</td>
                         <td>
+                            <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#priceModal${product.id}" onclick="loadPriceHistory(${product.id}, '${product.name}')">
+                                Ver Preços
+                            </button>
                             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#productModal${product.id}">
                                 Deletar
                             </button>
@@ -107,6 +110,29 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="modal fade" id="priceModal${product.id}" tabindex="-1" aria-labelledby="priceModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content row">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="priceModalLabel">Histórico de Preços</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-6"
+                                        <h6 class="fw-bold">Últimos Preços de Venda</h6>
+                                        <ul id="sales-list-${product.id}" class="list-group mb-3"></ul>
+                                    </div>                                        
+                                    <div class="col-6"
+                                        <h6 class="fw-bold">Últimos Preços de Compra</h6>
+                                        <ul id="purchases-list-${product.id}" class="list-group"></ul>
+                                    </div>                                        
+                                </div>                                        
+                            </div>
+                        </div>
+                    </div>
+
                 `;
             });
 
@@ -416,5 +442,46 @@
     
 
 </script>
+
+<script>
+    async function loadPriceHistory(productId, productName) {
+        try {
+            const response = await fetch(`/api/products/${productId}/prices/`);
+            const data = await response.json();
+    
+            const salesList = document.getElementById(`sales-list-${productId}`);
+            const purchasesList = document.getElementById(`purchases-list-${productId}`);
+    
+            salesList.innerHTML = "";
+            purchasesList.innerHTML = "";
+    
+            if (data.sales.length === 0) {
+                salesList.innerHTML = `<li class="list-group-item text-muted">Nenhuma venda registrada</li>`;
+            } else {
+                data.sales.forEach(item => {
+                    const date = new Date(item.sale__created).toLocaleDateString();
+                    salesList.insertAdjacentHTML("beforeend", `
+                        <li class="list-group-item">R$ ${parseFloat(item.price).toFixed(2)} - ${item.quantity} un. - ${date}</li>
+                    `);
+                });
+            }
+    
+            if (data.purchases.length === 0) {
+                purchasesList.innerHTML = `<li class="list-group-item text-muted">Nenhuma compra registrada</li>`;
+            } else {
+                data.purchases.forEach(item => {
+                    const date = new Date(item.purchase__created).toLocaleDateString();
+                    purchasesList.insertAdjacentHTML("beforeend", `
+                        <li class="list-group-item">R$ ${parseFloat(item.price).toFixed(2)} - ${item.quantity} un. - ${date}</li>
+                    `);
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao buscar preços:", error);
+            alert("Erro ao carregar preços.");
+        }
+    }
+    </script>
+    
 
 {% endblock %}
