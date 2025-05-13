@@ -11,7 +11,7 @@
                 {% csrf_token %}
                 <div class="row">
                     <!-- Nome da Venda -->
-                    <div class="mb-2 col-4">
+                    <div class="mb-2 col-3">
                         <label class="form-label">Nome:</label>
                         <input class="form-control" name="name" type="text" id="name" required />
                     </div>
@@ -21,18 +21,29 @@
                     </div>
                     
                     <!-- Metodo de Pagamento -->
-                    <div class="mb-2 col-2">
-                        <div class="mb-3">
-                            <label for="paymentType" class="form-label">Tipo de Pagamento</label>
-                            <select class="form-select" id="paymentType" name="payment_type" required>
-                                <option value="AV">À Vista</option>
-                                <option value="PX">PIX</option>
-                                <option value="DB">Débito</option>
-                                <option value="CR">Crédito</option>
-                                <option value="BO">Boleto</option>
-                            </select>
+                    <div class="mb-2 col-3">
+                        <div class="row">
+                            <div class="col">
+                                <div class="mb-3">
+                                    <label for="paymentType" class="form-label">Pagamento</label>
+                                    <select class="form-select" id="paymentType" name="payment_type" required>
+                                        <option value="AV">À Vista</option>
+                                        <option value="PX">PIX</option>
+                                        <option value="DB">Débito</option>
+                                        <option value="CR">Crédito</option>
+                                        <option value="BO">Boleto</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col d-none" id="creditInstallmentsContainer">
+                                <div class="mb-3">
+                                    <label for="creditInstallments" class="form-label">Parcelas (Crédito)</label>
+                                    <input type="number" class="form-control" id="creditInstallments" name="credit_installments" min="1" placeholder="Ex: 6">
+                                </div>
+                            </div>
                         </div>
                     </div>
+
 
                     <!-- Cliente -->
                     <div class="mb-2 col">
@@ -437,6 +448,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const name = document.querySelector("#name").value.trim();
             const customer = document.querySelector("[name='customer']").value;
             const paymentType = paymentTypeSelect.value;
+            const creditInstallments = document.getElementById("creditInstallments").value;
             const observations = document.querySelector("#observations")?.value.trim() || "";
     
             if (!addedProducts.length) {
@@ -462,6 +474,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     return alert("Adicione pelo menos uma parcela válida.");
                 }
             }
+
+            if (paymentType === "CR" && creditInstallments) {
+                saleData.credit_installments = parseInt(creditInstallments);
+            }
     
             try {
                 const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
@@ -485,6 +501,24 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
     </script>
+
+
+{% comment %} =================== API PARCELAS CREDITO ============= {% endcomment %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const paymentSelect = document.getElementById("paymentType");
+        const creditInstallmentsContainer = document.getElementById("creditInstallmentsContainer");
+    
+        paymentSelect.addEventListener("change", function () {
+            const selected = paymentSelect.value;
+            if (selected === "CR") {
+                creditInstallmentsContainer.classList.remove("d-none");
+            } else {
+                creditInstallmentsContainer.classList.add("d-none");
+            }
+        });
+    });
+</script>
     
     
 
@@ -515,7 +549,15 @@ document.addEventListener("DOMContentLoaded", function () {
         customers.forEach((customer) => {
             const option = document.createElement("option");
             option.value = customer.id;
-            option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+            if (customer.has_overdue_boleto) {
+                option.textContent = `⚠️ ${customer.name} (${customer.cpf_or_cnpj})`;
+                option.style.color = "red";
+                option.style.fontWeight = "bold";
+                console.log('boleto vencido')
+            } else {
+                option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+                console.log('boleto nao vencido')
+            }
             customerSelect.appendChild(option);
         });
     }

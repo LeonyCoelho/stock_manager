@@ -108,6 +108,9 @@ class Sale(models.Model):
 
     is_quote = models.BooleanField(default=True)
 
+    credit_installments = models.PositiveIntegerField(null=True, blank=True)
+
+
     def save(self, *args, **kwargs):
         if self.customer and not self.customer_name:
             self.customer_name = self.customer.name  # Salva o nome antes da exclusão

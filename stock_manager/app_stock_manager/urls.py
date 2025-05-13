@@ -57,6 +57,7 @@ urlpatterns = [
     path('api/suppliers/', views.get_all_suppliers, name='get_all_suppliers'),
     path('api/products/', views.get_all_products, name='get_all_products'),
     path('api/products/search/', views.api_products, name='api_products'),
+    path('api/products/<int:product_id>/last-price/', views.get_last_purchase_price, name='last-purchase-price'),
     path('api/products/<int:product_id>/prices/', views.get_product_prices, name='product-prices'),
     path('api/unit-types/', views.get_unit_types, name='get_unit_types'),
     path('api/stocks/', views.get_all_stocks, name='get_all_stocks'),

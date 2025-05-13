@@ -347,6 +347,9 @@ def add_product(request):
     # Se o método não for POST
     return JsonResponse({"error": "Método não permitido."}, status=405)
     
+from django.utils import timezone  # Adicione isso no topo se ainda não tiver
+
+
 @csrf_exempt
 @login_required
 def add_sale(request):
@@ -366,12 +369,31 @@ def add_sale(request):
             # Valida se o cliente existe
             customer = get_object_or_404(Customer, id=customer_id)
 
+            if not is_quote:
+                boletos_vencidos = Boleto.objects.filter(
+                    sale__customer=customer,
+                    due_date__lt=timezone.now(),
+                    status="Pendente"
+                )
+                if boletos_vencidos.exists():
+                    return JsonResponse({
+                        "success": False,
+                        "error": "Este cliente possui boletos vencidos. A venda não pode ser realizada."
+                    }, status=400)
+
             # Inicializa variáveis
             sale_name = data.get("name", "")
+            credit_installments = data.get("credit_installments")
             observations = data.get("observations", "")
             payment_type = data.get("payment_type", "")
             nfe = data.get("nfe", "")  # Novo campo NFE
             products = data.get("products", [])
+
+            if payment_type == "CR" and not credit_installments:
+                return JsonResponse({
+                    "success": False,
+                    "error": "Informe o número de parcelas para pagamento com cartão de crédito."
+                }, status=400)
 
             # Calcula o preço total
             total_price = Decimal(0.00)  # Inicializa como Decimal
@@ -407,6 +429,8 @@ def add_sale(request):
                 payment_type=payment_type,
                 full_price=total_price,  # Salva o preço total como Decimal
                 is_quote=is_quote,  # Define se é orçamento ou venda
+                credit_installments=credit_installments if payment_type == "CR" else None,
+
             )
 
             
@@ -1687,3 +1711,18 @@ def get_product_prices(request, product_id):
         })
     except Product.DoesNotExist:
         return JsonResponse({"error": "Produto não encontrado"}, status=404)
+    
+def get_last_purchase_price(request, product_id):
+    try:
+        last_purchase = (
+            PurchaseProduct.objects
+            .filter(product_id=product_id)
+            .order_by('-id')
+            .first()
+        )
+        if last_purchase:
+            return JsonResponse({"price": float(last_purchase.price)})
+        else:
+            return JsonResponse({"price": 0})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
