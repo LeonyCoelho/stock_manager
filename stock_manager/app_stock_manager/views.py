@@ -369,18 +369,6 @@ def add_sale(request):
             # Valida se o cliente existe
             customer = get_object_or_404(Customer, id=customer_id)
 
-            if not is_quote:
-                boletos_vencidos = Boleto.objects.filter(
-                    sale__customer=customer,
-                    due_date__lt=timezone.now(),
-                    status="Pendente"
-                )
-                if boletos_vencidos.exists():
-                    return JsonResponse({
-                        "success": False,
-                        "error": "Este cliente possui boletos vencidos. A venda não pode ser realizada."
-                    }, status=400)
-
             # Inicializa variáveis
             sale_name = data.get("name", "")
             credit_installments = data.get("credit_installments")
@@ -1400,32 +1388,76 @@ def get_unit_types(request):
     unit_types = [{"value": key, "label": value} for key, value in dict(Product.UNIT_CHOICES).items()]
     return JsonResponse({"unit_types": unit_types})
 
+# def get_all_stocks(request):
+#     query = request.GET.get("search", "").strip()
+
+#     stocks = Stock.objects.select_related("product").all()
+
+#     if query:
+#         stocks = stocks.filter(Q(product__name__icontains=query))  # Filtra pelo nome do produto
+
+#     stock_list = []
+
+#     for stock in stocks:
+#         price = float(stock.price) if stock.price else 0.0
+#         quantity = float(stock.quantity) if stock.quantity else 0.0  # Converte para float
+#         peso_por_pacote = float(getattr(stock, "peso_por_pacote", 0.0))  # Converte para float
+#         preco_por_kg = float(stock.preco_por_kg) if hasattr(stock, "preco_por_kg") else (price / peso_por_pacote if peso_por_pacote else 0.0)
+#         peso_total = peso_por_pacote * quantity  # Ambos são float agora
+#         preco_total = price * quantity  # Ambos são float agora
+
+#         stock_list.append({
+#             "id": stock.id,
+#             "product_id": stock.product.id if stock.product else None,
+#             "product_name": stock.product.name if stock.product else "Produto Removido",
+#             "quantity": quantity,
+#             "price": price,
+#             "preco_por_kg": preco_por_kg,
+#             "peso_por_pacote": peso_por_pacote,
+#             "peso_total": peso_total,
+#             "preco_total": preco_total,
+#             "min_quantity": float(stock.min_quantity) if stock.min_quantity else 0.0,
+#             "max_quantity": float(stock.max_quantity) if stock.max_quantity else 0.0,
+#         })
+
+#     return JsonResponse({"stocks": stock_list})
+
+
 def get_all_stocks(request):
     query = request.GET.get("search", "").strip()
-
     stocks = Stock.objects.select_related("product").all()
 
     if query:
-        stocks = stocks.filter(Q(product__name__icontains=query))  # Filtra pelo nome do produto
+        stocks = stocks.filter(Q(product__name__icontains=query))
 
     stock_list = []
 
     for stock in stocks:
+        product = stock.product
         price = float(stock.price) if stock.price else 0.0
-        quantity = float(stock.quantity) if stock.quantity else 0.0  # Converte para float
-        peso_por_pacote = float(getattr(stock, "peso_por_pacote", 0.0))  # Converte para float
-        preco_por_kg = float(stock.preco_por_kg) if hasattr(stock, "preco_por_kg") else (price / peso_por_pacote if peso_por_pacote else 0.0)
-        peso_total = peso_por_pacote * quantity  # Ambos são float agora
-        preco_total = price * quantity  # Ambos são float agora
+        quantity = float(stock.quantity) if stock.quantity else 0.0
+
+        # ✅ Cálculo do peso do pacote
+        try:
+            largura, altura = map(int, product.size.split("x"))
+            area = (Decimal(largura) / 100) * (Decimal(altura) / 100)
+            peso_pacote_g = Decimal(product.weight) * area * Decimal(product.quantity_per_package)
+            peso_pacote_kg = peso_pacote_g / Decimal(1000)
+        except Exception:
+            peso_pacote_kg = Decimal(0)
+
+        preco_por_kg = float(stock.price / peso_pacote_kg) if peso_pacote_kg > 0 else 0.0
+        peso_total = float(abs(peso_pacote_kg * Decimal(quantity)))
+        preco_total = float(abs(stock.price * Decimal(quantity)))
 
         stock_list.append({
             "id": stock.id,
-            "product_id": stock.product.id if stock.product else None,
-            "product_name": stock.product.name if stock.product else "Produto Removido",
+            "product_id": product.id if product else None,
+            "product_name": product.name if product else "Produto Removido",
             "quantity": quantity,
             "price": price,
             "preco_por_kg": preco_por_kg,
-            "peso_por_pacote": peso_por_pacote,
+            "peso_por_pacote": float(peso_pacote_kg),
             "peso_total": peso_total,
             "preco_total": preco_total,
             "min_quantity": float(stock.min_quantity) if stock.min_quantity else 0.0,
@@ -1712,17 +1744,18 @@ def get_product_prices(request, product_id):
     except Product.DoesNotExist:
         return JsonResponse({"error": "Produto não encontrado"}, status=404)
     
+@login_required
 def get_last_purchase_price(request, product_id):
     try:
         last_purchase = (
             PurchaseProduct.objects
             .filter(product_id=product_id)
-            .order_by('-id')
+            .order_by("-id")
             .first()
         )
         if last_purchase:
             return JsonResponse({"price": float(last_purchase.price)})
         else:
-            return JsonResponse({"price": 0})
+            return JsonResponse({"price": 0.00})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)

@@ -446,10 +446,17 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("DEBUG: Checkbox marcado?", isQuote); // 🔍 Verifica se está correto
     
             const name = document.querySelector("#name").value.trim();
+            const nfe = document.querySelector("#nfe").value.trim();
             const customer = document.querySelector("[name='customer']").value;
             const paymentType = paymentTypeSelect.value;
             const creditInstallments = document.getElementById("creditInstallments").value;
             const observations = document.querySelector("#observations")?.value.trim() || "";
+
+            const customerSelectEl = document.querySelector("[name='customer']");
+            const customerId = customerSelectEl.value;
+            const selectedOption = customerSelectEl.options[customerSelectEl.selectedIndex];
+            const hasOverdue = selectedOption.textContent.includes("⚠️");
+
     
             if (!addedProducts.length) {
                 return alert("Adicione ao menos um produto.");
@@ -457,6 +464,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
             const saleData = {
                 name,
+                nfe,
                 customer,
                 payment_type: paymentType,
                 observations,
@@ -473,11 +481,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (!saleData.installments.length) {
                     return alert("Adicione pelo menos uma parcela válida.");
                 }
+                if (hasOverdue && !isQuote) {
+                    const continuar = confirm("⚠️ Este cliente possui boletos vencidos. Deseja continuar mesmo assim?");
+                    if (!continuar) {
+                        return; // Usuário cancelou
+                    }
+                }
             }
 
             if (paymentType === "CR" && creditInstallments) {
                 saleData.credit_installments = parseInt(creditInstallments);
             }
+
+                // ✅ Verifica se o cliente tem boleto vencido (e não é orçamento)
     
             try {
                 const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];

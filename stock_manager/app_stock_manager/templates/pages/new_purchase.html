@@ -109,13 +109,25 @@
     }
 
     // Função para adicionar produto à tabela
-    window.addProduct = function (productId) {
+    window.addProduct = async function (productId) {
         const product = products.find((p) => p.id === productId);
         if (!product || addedProducts.find((p) => p.id === productId)) return;
-
-        addedProducts.push({ ...product, quantity: 1 });
+    
+        try {
+            const response = await fetch(`/api/products/${productId}/last-purchase-price/`);
+            const data = await response.json();
+            const lastPrice = data.price || 0;
+            console.log(lastPrice)
+    
+            addedProducts.push({ ...product, quantity: 1, price: parseFloat(lastPrice) });
+        } catch (error) {
+            console.error("Erro ao buscar último preço de venda:", error);
+            addedProducts.push({ ...product, quantity: 1, price: 0 });
+        }
+    
         renderSelectedProducts();
     };
+    
 
     
 
@@ -141,7 +153,7 @@ function renderSelectedProducts() {
         .map(
             (product) => `
             <tr>
-                <td>${product.name}</td>
+                <td>${product.name} </td>
                 <td>
                     <input
                         type="number"
@@ -288,6 +300,8 @@ window.updatePrice = function (productId, newPrice) {
 
 </script>
 
+
+{% comment %} SCRIPT PARA FORNECEDORES ========================================== {% endcomment %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const supplierApiUrl = "/api/suppliers/"; // URL da API de clientes

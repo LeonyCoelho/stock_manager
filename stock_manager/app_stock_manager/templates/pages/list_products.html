@@ -12,7 +12,7 @@
             </span>
         </div>        
         <div class="card-body">
-            <table class="table table-bordered table-striped" id="product-table">
+            <table class="table table-bordered table-striped" style=" --bs-table-bg: transparent !important; background-color: transparent !important;" id="product-table">
                 <thead class="table">
                     <tr>
                         <th>ID</th>
@@ -81,18 +81,14 @@
                         <td>${product.quantity_per_package}</td>
                         <td>
                             <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#priceModal${product.id}" onclick="loadPriceHistory(${product.id}, '${product.name}')">
-                                Ver Preços
+                                Histórico
                             </button>
                             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#productModal${product.id}">
                                 Deletar
                             </button>
                         </td>
                     </tr>
-                `;
-                tableBody.insertAdjacentHTML("beforeend", row);
 
-                // Armazena o modal para renderizar após o loop
-                modals += `
                     <div class="modal fade" id="productModal${product.id}" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -132,12 +128,19 @@
                             </div>
                         </div>
                     </div>
+                `;
+                tableBody.insertAdjacentHTML("beforeend", row);
+
+                // Armazena o modal para renderizar após o loop
+                modals += `
+
 
                 `;
             });
 
             // Insira os modais no final do body
             document.querySelector("body").insertAdjacentHTML("beforeend", modals);
+            
         }
 
         // Função para renderizar os botões de paginação
@@ -247,7 +250,7 @@
 
 {% comment %} SCRIPT DE PESQUISA ==================================== {% endcomment %}
 
-<script>
+{% comment %} <script>
 
     document.addEventListener("DOMContentLoaded", function () {
         const apiUrl = "/api/products/";
@@ -441,8 +444,10 @@
     });
     
 
-</script>
+</script> {% endcomment %}
 
+
+{% comment %} SCRIPT DE HISTORICO DE PRECO ============================================== {% endcomment %}
 <script>
     async function loadPriceHistory(productId, productName) {
         try {
