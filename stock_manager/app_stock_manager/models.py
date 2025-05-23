@@ -11,29 +11,52 @@ class Category(models.Model):
 
 class Customer(models.Model):
     name = models.CharField(max_length=255)
+    contact_name = models.CharField(max_length=255, blank=True, null=True)   # Nome do contato
+    phone = models.CharField(max_length=20, blank=True, null=True)           # Telefone
+    email = models.EmailField(blank=True, null=True)                         # Email
+
     created = models.DateTimeField(auto_now_add=True)
     cpf_or_cnpj = models.CharField(max_length=20, verbose_name="CPF ou CNPJ")
     is_cnpj = models.BooleanField(default=False)
+
+    # Endereço
     address_number = models.CharField(max_length=20)
     street = models.CharField(max_length=255)
     district = models.CharField(max_length=255)
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=50)
     cep = models.CharField(max_length=20)
-    observations = models.TextField(blank=True, null=True)  
 
-    def __str__(self):
-        return self.name
-
-
-class Supplier(models.Model):
-    name = models.CharField(max_length=255)
-    created = models.DateTimeField(auto_now_add=True)
-    cnpj = models.CharField(max_length=20, default=None)
     observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
+
+
+
+class Supplier(models.Model):
+    name = models.CharField(max_length=255)
+    contact_name = models.CharField(max_length=255, blank=True, null=True)  # Nome do contato
+    phone = models.CharField(max_length=20, blank=True, null=True)           # Telefone
+    email = models.EmailField(blank=True, null=True)                         # Email
+
+    # Endereço
+    street = models.CharField(max_length=255, blank=True, null=True)         # Rua
+    address_number = models.CharField(max_length=20, blank=True, null=True)  # Número
+    district = models.CharField(max_length=255, blank=True, null=True)       # Bairro
+    city = models.CharField(max_length=255, blank=True, null=True)           # Cidade
+    state = models.CharField(max_length=50, blank=True, null=True)           # Estado
+    cep = models.CharField(max_length=20, blank=True, null=True)             # CEP
+
+    # Dados gerais
+    cnpj = models.CharField(max_length=20, default=None)
+    observations = models.TextField(blank=True, null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
 
 
 class Product(models.Model):
@@ -49,12 +72,20 @@ class Product(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     weight = models.IntegerField(default='0')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+
+    manufacturer = models.CharField(  # ✅ Fabricante como texto
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Fabricante"
+    )
+
     unit_type = models.CharField(
-            max_length=50,
-            verbose_name="Unit Type",
-            choices=UNIT_CHOICES,
-            default='un',
-        )
+        max_length=50,
+        verbose_name="Unit Type",
+        choices=UNIT_CHOICES,
+        default='g',
+    )
     size = models.CharField(max_length=255, default='0x0')
     quantity_per_package = models.CharField(max_length=10, default='0')
     observations = models.TextField(blank=True, null=True)

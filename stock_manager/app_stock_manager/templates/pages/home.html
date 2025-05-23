@@ -112,6 +112,26 @@
         </div>
     </div>
 
+<!-- Modal de Deletar Orçamento -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                Tem certeza de que deseja deletar este orçamento? <br>
+                Esta ação <strong>não poderá ser desfeita</strong>.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Deletar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     
     
      
@@ -632,8 +652,9 @@
                     li.innerHTML = `
                     <span>${quote.name} - Cliente: ${quote.customer_name || "N/A"} - R$ ${quote.full_price.toFixed(2)}</span>
                     <span>
-                    <button class="btn btn-sm btn-primary" onclick="window.location.href='/quote/edit/${quote.id}/'">Editar</button>
-                    <button class="btn btn-sm btn-success" onclick="showConvertModal(${quote.id})">Converter em Venda</button>
+                        <button class="btn btn-sm btn-primary" onclick="window.location.href='/quote/edit/${quote.id}/'">Editar</button>
+                        <button class="btn btn-sm btn-success" onclick="showConvertModal(${quote.id})">Converter em Venda</button>
+                        <button class="btn btn-sm btn-danger" onclick="showDeleteModal(${quote.id})">Deletar</button>
                     </span>
                 `;
                 
@@ -674,6 +695,61 @@
             const modal = bootstrap.Modal.getInstance(document.getElementById("confirmConvertModal"));
             modal.hide();
         });
+
+
+      
+
+        window.showDeleteModal = function (saleId) {
+            selectedQuoteId = saleId;
+            const modal = new bootstrap.Modal(document.getElementById("confirmDeleteModal"));
+            modal.show();
+        };
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== "") {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Verifica se é o cookie procurado
+                    if (cookie.startsWith(name + "=")) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+
+        document.getElementById("confirmDeleteBtn").addEventListener("click", async function () {
+            if (!selectedQuoteId) return;
+
+            try {
+                const response = await fetch(`/sale/delete/${selectedQuoteId}/`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("Orçamento excluído com sucesso.");
+                    fetchQuotes(); // Recarrega a lista de orçamentos
+                } else {
+                    alert("Erro: " + (result.error || "Não foi possível excluir."));
+                }
+            } catch (error) {
+                console.error("Erro ao excluir orçamento:", error);
+                alert("Erro de rede ao tentar excluir.");
+            }
+
+            selectedQuoteId = null;
+            const modal = bootstrap.Modal.getInstance(document.getElementById("confirmDeleteModal"));
+            modal.hide();
+        });
+
     
         fetchQuotes();
     });

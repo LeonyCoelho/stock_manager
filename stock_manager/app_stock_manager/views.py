@@ -827,26 +827,25 @@ def gerar_relatorio_produtos(request):
     else:
         return JsonResponse({"success": False, "error": "Formato não suportado"}, status=400)
 
+
 def gerar_relatorio_produtos_excel(request, categoria):
-    # Busca os dados da API
-    stock_data = fetch_stock_data()
-
-    # Filtra por categoria, se fornecida
+    # Busca todos os estoques com produtos
+    stocks = Stock.objects.select_related("product", "product__category")
     if categoria:
-        stock_data = [stock for stock in stock_data if stock['product']['category'] == categoria.name]
+        stocks = stocks.filter(product__category=categoria)
 
-    # Criação do arquivo Excel
+    # Cria o Excel
     wb = Workbook()
     ws = wb.active
     ws.title = "Relatório de Produtos"
 
-    # Título do relatório
+    # Título
     titulo = f"Relatório de Produtos - Categoria: {categoria.name if categoria else 'Todas'}"
     ws.merge_cells('A1:J1')
     ws['A1'] = titulo
     ws['A1'].alignment = Alignment(horizontal='center')
 
-    # Cabeçalhos da tabela
+    # Cabeçalhos
     headers = [
         "Nome do Produto", "Gramatura", "Formato", "Quantidade de Pacotes",
         "Quantidade por Pacote", "Total de Folhas", "Preço Unitário",
@@ -857,99 +856,125 @@ def gerar_relatorio_produtos_excel(request, categoria):
         cell.alignment = Alignment(horizontal='center')
         ws.column_dimensions[get_column_letter(col_num)].width = len(header) + 2
 
-    # Preenche os dados da tabela
-    for row_num, stock in enumerate(stock_data, start=3):
-        product = stock['product']
+    # Dados
+    for row_num, stock in enumerate(stocks, start=3):
+        produto = stock.product
+        try:
+            quantity = Decimal(stock.quantity or 0)
+            price = Decimal(stock.price or 0)
+            qty_per_pack = Decimal(produto.quantity_per_package or 0)
 
-        # Convertendo os valores numéricos para o tipo adequado
-        quantity = int(float(stock['quantity']))
-        price = float(stock['price'])
-        total_folhas = int(float(stock['total_folhas']))
-        preco_por_kg = float(stock['preco_por_kg'])
-        peso_por_pacote = float(stock['peso_por_pacote'])
-        peso_total = float(stock['peso_total'])
-        preco_total = float(stock['preco_total'])
+            # Cálculo do peso por pacote
+            try:
+                largura, altura = map(int, produto.size.split("x"))
+                area = (Decimal(largura) / 100) * (Decimal(altura) / 100)
+                peso_pacote_g = Decimal(produto.weight or 0) * area * qty_per_pack
+                peso_pacote_kg = peso_pacote_g / Decimal(1000)
+            except Exception:
+                peso_pacote_kg = Decimal(0)
 
-        ws.cell(row=row_num, column=1, value=product['name'])
-        ws.cell(row=row_num, column=2, value=f"{product['weight']} {product['size']}")
-        ws.cell(row=row_num, column=3, value=product['size'])
-        ws.cell(row=row_num, column=4, value=quantity)
-        ws.cell(row=row_num, column=5, value=int(product['quantity_per_package']))
-        ws.cell(row=row_num, column=6, value=total_folhas)
-        ws.cell(row=row_num, column=7, value=f"R$ {price:.2f}")
-        ws.cell(row=row_num, column=8, value=f"R$ {preco_por_kg:.2f}")
-        ws.cell(row=row_num, column=9, value=f"{peso_por_pacote:.2f} kg")
-        ws.cell(row=row_num, column=10, value=f"{peso_total:.2f} kg")
+            preco_por_kg = float(price / peso_pacote_kg) if peso_pacote_kg > 0 else 0.0
+            peso_total = float(abs(peso_pacote_kg * quantity))
+            preco_total = float(abs(price * quantity))
+            total_folhas = int(qty_per_pack * abs(quantity))
 
-        # Alinhamento à esquerda para todas as células
-        for col_num in range(1, 11):
-            cell = ws.cell(row=row_num, column=col_num)
-            cell.alignment = Alignment(horizontal='left')
+            # Preencher a linha
+            ws.cell(row=row_num, column=1, value=produto.name)
+            ws.cell(row=row_num, column=2, value=f"{produto.weight} g")
+            ws.cell(row=row_num, column=3, value=produto.size)
+            ws.cell(row=row_num, column=4, value=float(quantity))
+            ws.cell(row=row_num, column=5, value=int(qty_per_pack))
+            ws.cell(row=row_num, column=6, value=total_folhas)
+            ws.cell(row=row_num, column=7, value=f"R$ {price:.2f}")
+            ws.cell(row=row_num, column=8, value=f"R$ {preco_por_kg:.2f}")
+            ws.cell(row=row_num, column=9, value=f"{peso_pacote_kg:.3f} kg")
+            ws.cell(row=row_num, column=10, value=f"{peso_total:.3f} kg")
 
-    # Retorno do arquivo Excel
+            # Alinhamento
+            for col in range(1, 11):
+                ws.cell(row=row_num, column=col).alignment = Alignment(horizontal='left')
+
+        except Exception as e:
+            print(f"Erro ao processar produto {produto.name}: {e}")
+
+    # Geração da resposta com Excel
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     filename = f"relatorio_produtos_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
     return response
 
-def gerar_relatorio_produtos_pdf(stock_data, categoria):
-    # Criação do arquivo PDF
+
+def gerar_relatorio_produtos_pdf(request, categoria):
+    # Consulta os dados diretamente do banco
+    stocks = Stock.objects.select_related("product", "product__category")
+    if categoria:
+        stocks = stocks.filter(product__category=categoria)
+
+    # Prepara o PDF
     buffer = BytesIO()
-    c = SimpleDocTemplate(buffer, pagesize=A4)
+    pdf = SimpleDocTemplate(buffer, pagesize=A4)
 
-    # Título do relatório
+    # Título
     titulo = f"Relatório de Produtos - Categoria: {categoria.name if categoria else 'Todas'}"
-
-    # Usando o Paragraph para título
     styles = getSampleStyleSheet()
-    title_paragraph = Paragraph(titulo, styles['Title'])
-    
-    # Adicionando título ao PDF
-    story = [title_paragraph]
+    story = [Paragraph(titulo, styles['Title'])]
 
-    # Cabeçalhos da tabela com quebras de linha e abreviações
+    # Cabeçalhos da tabela
     headers = [
         "Nome\nProduto", "Gram.\n(kg/g)", "Formato", "Pacotes",
         "Qtd./\nPacote", "Total\nFolhas", "Preço\nUnit.", "Preço\nKG",
         "Peso\nPacote", "Peso\nTotal"
     ]
-    
-    # Dados dos produtos
     data = [headers]
-    for stock in stock_data:
-        produto = stock['product']
 
-        # Quebra o nome em linhas de até 25 caracteres e limita a 2 linhas
-        nome_formatado = "\n".join(wrap(produto['name'], width=25)[:2])
-        if len(wrap(produto['name'], width=25)) > 2:
-            nome_formatado += "..."  # Adiciona reticências se for truncado
-        
-        preco_unitario = float(stock['preco_unitario']) if stock.get('preco_unitario') else 0
-        preco_por_kg = float(stock['preco_por_kg']) if stock.get('preco_por_kg') else 0
-        peso_por_pacote = float(stock['peso_por_pacote']) if stock.get('peso_por_pacote') else 0
-        peso_total = float(stock['peso_total']) if stock.get('peso_total') else 0
+    # Preenche os dados
+    for stock in stocks:
+        produto = stock.product
+        try:
+            quantity = Decimal(stock.quantity or 0)
+            price = Decimal(stock.price or 0)
+            qty_per_pack = Decimal(produto.quantity_per_package or 0)
 
-        # Preenche as células com os valores calculados
-        row = [
-            nome_formatado,
-            f"{produto['weight']} {produto['unit_type']}",
-            produto['size'],
-            stock['quantity'],
-            produto['quantity_per_package'],
-            stock['total_folhas'],
-            f"R$ {float(preco_unitario):.2f}",
-            f"R$ {float(preco_por_kg):.2f}",
-            f"{float(peso_por_pacote):.2f} kg",
-            f"{float(peso_total):.2f} kg",
-        ]
-        data.append(row)
+            try:
+                largura, altura = map(int, produto.size.split("x"))
+                area = (Decimal(largura) / 100) * (Decimal(altura) / 100)
+                peso_pacote_g = Decimal(produto.weight or 0) * area * qty_per_pack
+                peso_pacote_kg = peso_pacote_g / Decimal(1000)
+            except:
+                peso_pacote_kg = Decimal(0)
 
-    # Criando a tabela com os dados
-    table = Table(data)
-    style = TableStyle([
+            preco_por_kg = float(price / peso_pacote_kg) if peso_pacote_kg > 0 else 0.0
+            peso_total = float(abs(peso_pacote_kg * quantity))
+            preco_total = float(abs(price * quantity))
+            total_folhas = int(qty_per_pack * abs(quantity))
+
+            nome_formatado = "\n".join(wrap(produto.name, width=25)[:2])
+            if len(wrap(produto.name, width=25)) > 2:
+                nome_formatado += "..."
+
+            row = [
+                nome_formatado,
+                f"{produto.weight} g",
+                produto.size,
+                f"{quantity}",
+                f"{int(qty_per_pack)}",
+                f"{total_folhas}",
+                f"R$ {price:.2f}",
+                f"R$ {preco_por_kg:.2f}",
+                f"{peso_pacote_kg:.3f} kg",
+                f"{peso_total:.3f} kg"
+            ]
+            data.append(row)
+        except Exception as e:
+            print(f"Erro ao processar produto {produto.name}: {e}")
+            continue
+
+    # Cria a tabela
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -957,18 +982,16 @@ def gerar_relatorio_produtos_pdf(stock_data, categoria):
         ('FONTSIZE', (0, 0), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white])
-    ])
-    table.setStyle(style)
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.beige, colors.white]),
+    ]))
 
-    # Adiciona a tabela ao PDF
     story.append(table)
 
-    # Finaliza a criação do PDF
-    c.build(story)
-
-    # Retorna o PDF como resposta HTTP
+    # Gera o PDF
+    pdf.build(story)
     buffer.seek(0)
+
+    # Retorna o PDF como resposta
     response = HttpResponse(buffer, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="relatorio_produtos.pdf"'
     return response
@@ -1035,8 +1058,10 @@ def gerar_excel_vendas(vendas, data_inicial, data_final):
     # Dados das vendas
     for row_num, venda in enumerate(vendas, start=3):
         total_itens = sum(sale_product.quantity for sale_product in venda.sale_products.all())  # Soma das quantidades de produtos vendidos
+        cliente_nome = venda.customer.name if venda.customer else venda.customer_name or "Cliente removido"
+
         ws.cell(row=row_num, column=1, value=venda.id)
-        ws.cell(row=row_num, column=2, value=venda.customer.name)
+        ws.cell(row=row_num, column=2, value=cliente_nome)
         ws.cell(row=row_num, column=3, value=venda.user.username)
         ws.cell(row=row_num, column=4, value=venda.created.strftime('%d/%m/%Y'))
         ws.cell(row=row_num, column=5, value=venda.get_payment_type_display())
@@ -1088,7 +1113,7 @@ def gerar_pdf_vendas(vendas, data_inicial, data_final):
         total_itens = sum(sale_product.quantity for sale_product in venda.sale_products.all())
         row = [
             venda.id,
-            venda.customer.name,
+            venda.customer.name if venda.customer else venda.customer_name or "Cliente removido",
             venda.user.username,
             venda.created.strftime('%d/%m/%Y'),
             venda.get_payment_type_display(),
@@ -1185,8 +1210,9 @@ def gerar_excel_compras(compras, data_inicial, data_final):
     # Dados das compras
     for row_num, compra in enumerate(compras, start=3):
         total_itens = sum(purchase_product.quantity for purchase_product in compra.purchase_products.all())  # Soma das quantidades de produtos vendidos
+        fornecedor_nome = compra.supplier.name if compra.supplier else compra.supplier_name or "Cliente removido"
         ws.cell(row=row_num, column=1, value=compra.id)
-        ws.cell(row=row_num, column=2, value=compra.supplier.name)
+        ws.cell(row=row_num, column=2, value=fornecedor_nome)
         ws.cell(row=row_num, column=3, value=compra.user.username)
         ws.cell(row=row_num, column=4, value=compra.created.strftime('%d/%m/%Y'))
         ws.cell(row=row_num, column=6, value=compra.full_price)
@@ -1237,7 +1263,7 @@ def gerar_pdf_compras(compras, data_inicial, data_final):
         total_itens = sum(purchase_product.quantity for purchase_product in compra.purchase_products.all())
         row = [
             compra.id,
-            compra.supplier.name,
+            compra.supplier.name if compra.supplier else compra.supplier_name or "Fornecedor removido",
             compra.user.username,
             compra.created.strftime('%d/%m/%Y'),
             f"R$ {compra.full_price:.2f}",
@@ -1496,54 +1522,66 @@ def api_stock(request):
     return JsonResponse(data)
 
 def fetch_stock_data():
-    response = requests.get("http://127.0.0.1:8000/api/stocks/")
-    if response.status_code == 200:
-        return response.json().get('stock', [])
-    else:
+    try:
+        base_url = "http://127.0.0.1:8000"  # ✅ ajuste se estiver em produção
+        response = requests.get(f"{base_url}/api/stocks/")
+        response.raise_for_status()
+        return response.json().get("stock", [])
+    except Exception as e:
+        print("Erro ao buscar dados do estoque:", e)
         return []
 
 def get_all_sales(request):
-    query = request.GET.get("search", "").strip()
-
-    sales = Sale.objects.all()
-
-    if query:
-        sales = sales.filter(
-            Q(name__icontains=query) |  # Busca pelo nome da venda
-            Q(customer__name__icontains=query) |  # Busca pelo nome do cliente
-            Q(nfe__icontains=query)  # Busca pelo número do pedido
-        )
-
-    sale_list = []
-
+    sales = Sale.objects.prefetch_related("sale_products", "boletos").select_related("customer").order_by("-created")
+    
+    sales_list = []
     for sale in sales:
-        sale_products = [
-            {
-                "product_id": sale_product.product.id if sale_product.product else None,
-                "product_name": sale_product.product.name if sale_product.product else sale_product.product_info,
-                "quantity": float(sale_product.quantity),
-                "price": float(sale_product.price),
-                "total_price": float(sale_product.quantity * sale_product.price),
-            }
-            for sale_product in sale.sale_products.all()
-        ]
+        # Produtos
+        products = []
+        for sp in sale.sale_products.all():
+            products.append({
+                "product_id": sp.product.id if sp.product else None,
+                "product_name": sp.product.name if sp.product else (sp.product_info or "Produto Removido"),
+                "quantity": float(sp.quantity),
+                "price": float(sp.price),
+                "total_price": float(sp.quantity * sp.price),
+            })
 
-        sale_list.append({
+        # Boletos (somente se forem da modalidade boleto)
+        boletos = []
+        if sale.payment_type == "BO":
+            for b in sale.boletos.all():
+                boletos.append({
+                    "value": float(b.value),
+                    "due_date": b.due_date.isoformat(),
+                    "status": b.status,
+                })
+
+        # Número de parcelas (se crédito)
+        credit_installments = 1
+        if sale.payment_type == "CR":
+            # Aqui assumimos que o número de parcelas é equivalente à quantidade de boletos
+            # ou você pode salvar esse valor em um campo próprio futuramente
+            credit_installments = sale.boletos.count() if sale.boletos.exists() else 1
+
+        sales_list.append({
             "sale_id": sale.id,
             "sale_name": sale.name,
-            "sale_created": sale.created,
-            "customer_name": sale.customer.name if sale.customer else sale.customer_name,
+            "sale_created": sale.created.isoformat(),
+            "customer_name": sale.customer_name or "Cliente Removido",
             "full_price": float(sale.full_price),
-            "products": sale_products,
             "nfe": sale.nfe,
+            "products": products,
+            "payment_type": sale.payment_type,
+            "credit_installments": credit_installments,
+            "boletos": boletos,
         })
 
-    return JsonResponse({"sales": sale_list})
-
+    return JsonResponse({"sales": sales_list})
 def get_all_purchases(request):
     query = request.GET.get("search", "").strip()
 
-    purchases = Purchase.objects.all()
+    purchases = Purchase.objects.all().order_by("-created")
 
     if query:
         purchases = purchases.filter(

@@ -42,6 +42,18 @@
 
 <script>
 
+    function getPaymentTypeLabel(code) {
+        switch (code) {
+            case "AV": return "À Vista";
+            case "PX": return "PIX";
+            case "DB": return "Débito";
+            case "CR": return "Crédito";
+            case "BO": return "Boleto";
+            default: return "Desconhecido";
+        }
+    }
+    
+
     document.addEventListener("DOMContentLoaded", function () {
         const apiUrl = "/api/sales/";
         const rowsPerPage = 20;
@@ -143,6 +155,40 @@
                                     <h5>Cliente: ${sale.customer_name}</h5>
                                     <h5>Data: ${new Date(sale.sale_created).toLocaleString()}</h5>
                                     <h5>Valor Total: R$${sale.full_price.toFixed(2)}</h5>
+                                    <h5>Forma de Pagamento: ${getPaymentTypeLabel(sale.payment_type)}</h5>
+                                    ${sale.payment_type === "CR" ? `
+                                        <p class="mb-1">Parcelas: ${sale.credit_installments}x</p>
+                                    ` : ""}
+                                    ${sale.payment_type === "BO" && sale.boletos.length ? `
+                                        <div class="mt-2">
+                                            <strong>Boletos:</strong>
+                                            <ul class="list-group">
+                                    ${sale.boletos.map(b => {
+                                        const dueDate = new Date(b.due_date);
+                                        const today = new Date();
+                                        let badge = "";
+
+                                        if (b.status === "Pago") {
+                                            badge = `<span class="badge bg-success">Pago</span>`;
+                                        } else if (dueDate < today) {
+                                            badge = `<span class="badge bg-danger">Vencido</span>`;
+                                        } else {
+                                            badge = `<span class="badge bg-secondary">Pendente</span>`;
+                                        }
+
+                                        return `
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    Vencimento: ${dueDate.toLocaleDateString()} ${badge}
+                                                </span>
+                                                <span class="fw-bold">R$ ${b.value.toFixed(2)}</span>
+                                            </li>
+                                        `;
+                                    }).join("")}
+                                </ul>
+
+                                        </div>
+                                    ` : ""}
                                     <hr>
                                     <h6>Produtos:</h6>
                                     <ul class="list-group">
