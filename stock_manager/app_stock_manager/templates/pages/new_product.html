@@ -11,12 +11,18 @@
                 <form method="post" id="product-form">
                     {% csrf_token %}
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-7">
                             <label class="form-label">Nome:</label>
                             <input class="form-control" name="name" type="text" id="name" required />
                         </div>
+                        <div class="col-5">
+                            <label class="form-label">Fabricante</label>
+                            <select class="form-select" name="manufacturer" id="manufacturer">
+                                <option selected hidden disabled>Selecione</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="row">
+                    <div class="row mt-3">
                         <div class="col-3">
                             <label class="form-label">Gramas:</label>
                             <div class="input-group mb-3">
@@ -72,6 +78,9 @@
         // Combina os valores de formato
         const size = `${size1}x${size2}`;
 
+        const manufacturer = document.getElementById("manufacturer").value;
+        const category = document.getElementById("category").value;
+
         // Cria o payload para a API
         const payload = {
             name,
@@ -80,6 +89,8 @@
             size,
             quantity_per_package: quantityPerPack,
             observations,
+            manufacturer,
+            category
         };
 
         try {
@@ -160,5 +171,33 @@
     });
 
 </script>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const manufacturerSelect = document.getElementById("manufacturer");
 
+        try {
+            const response = await fetch("/api/manufacturers/");
+            if (response.ok) {
+                const data = await response.json();
+                if (data.manufacturers.length === 0) {
+                    const option = document.createElement("option");
+                    option.text = "Nenhum fabricante cadastrado";
+                    option.disabled = true;
+                    manufacturerSelect.appendChild(option);
+                } else {
+                    data.manufacturers.forEach((manufacturer) => {
+                        const option = document.createElement("option");
+                        option.value = manufacturer.id;
+                        option.text = manufacturer.name;
+                        manufacturerSelect.appendChild(option);
+                    });
+                }
+            } else {
+                console.error("Erro ao buscar fabricantes.");
+            }
+        } catch (error) {
+            console.error("Erro de conexão com a API de fabricantes:", error);
+        }
+    });
+</script>
 {% endblock %}

@@ -17,6 +17,8 @@
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>
+                        <th>Fabricante</th>
+                        <th>Categoria</th>
                         <th>Gramas</th>
                         <th>Formato</th>
                         <th>Quat. p/ Pacote</th>
@@ -76,10 +78,15 @@
                     <tr>
                         <td>${start + index + 1}</td>
                         <td>${product.name}</td>
+                        <td>${product.manufacturer ? product.manufacturer.name : "Sem fabricante"}</td>
+                        <td>${product.category ? product.category.name : "Sem categoria"}</td>
                         <td>${product.weight} ${product.unit_type}</td>
                         <td>${product.size}</td>
                         <td>${product.quantity_per_package}</td>
                         <td>
+                            <a class="btn btn-sm btn-primary" href="/products/edit/${product.id}">
+                                Editar
+                            </a>
                             <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#priceModal${product.id}" onclick="loadPriceHistory(${product.id}, '${product.name}')">
                                 Ver Preços
                             </button>
@@ -269,169 +276,7 @@
                 console.error("Erro ao buscar produtos:", error);
             }
         }
-    
-        function renderTable() {
-            const tableBody = document.querySelector("#product-table tbody");
-            tableBody.innerHTML = "";
-        
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageData = filteredProducts.slice(start, end);
-        
-            pageData.forEach((product, index) => {
-                const row = `
-                    <tr>
-                        <td hidden>${start + index + 1}</td>
-                        <td>${product.id}</td>
-                        <td>${product.name}</td>
-                        <td>${product.weight} ${product.unit_type}</td>
-                        <td>${product.size}</td>
-                        <td>${product.quantity_per_package}</td>
-                        <td>
-                            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#productModal${product.id}">
-                                Deletar
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tableBody.insertAdjacentHTML("beforeend", row);
-            });
-        }
-        
-    
-        function renderPagination() {
-            const totalPages = Math.ceil(filteredProducts.length / rowsPerPage);
-            const pagination = document.querySelector("#pagination");
-            pagination.innerHTML = "";
-    
-            if (totalPages <= 1) return; // Esconde paginação se houver apenas uma página
-    
-            pagination.insertAdjacentHTML(
-                "beforeend",
-                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
-                </li>`
-            );
-    
-            for (let i = 1; i <= totalPages; i++) {
-                pagination.insertAdjacentHTML(
-                    "beforeend",
-                    `<li class="page-item ${i === currentPage ? "active" : ""}">
-                        <button class="page-link" data-page="${i}">${i}</button>
-                    </li>`
-                );
-            }
-    
-            pagination.insertAdjacentHTML(
-                "beforeend",
-                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
-                </li>`
-            );
-    
-            document.querySelectorAll("#pagination .page-link").forEach((button) => {
-                button.addEventListener("click", function () {
-                    const page = parseInt(this.dataset.page, 10);
-                    if (!isNaN(page) && page > 0 && page <= totalPages) {document.addEventListener("DOMContentLoaded", function () {
-                        const apiUrl = "/api/products/";
-                        const rowsPerPage = 20;
-                        let currentPage = 1;
-                        let products = [];
-                        let filteredProducts = [];
-                    
-                        async function fetchProducts(searchQuery = "") {
-                            try {
-                                const response = await fetch(`${apiUrl}?search=${encodeURIComponent(searchQuery)}`);
-                                const data = await response.json();
-                                products = data.products || [];
-                                filteredProducts = [...products]; // Inicializa a lista filtrada com todos os produtos
-                                currentPage = 1; // Reseta para a primeira página
-                                renderTable();
-                                renderPagination();
-                            } catch (error) {
-                                console.error("Erro ao buscar produtos:", error);
-                            }
-                        }
-                    
-                        function renderTable() {
-                            const tableBody = document.querySelector("#product-table tbody");
-                            tableBody.innerHTML = "";
-                    
-                            const start = (currentPage - 1) * rowsPerPage;
-                            const end = start + rowsPerPage;
-                            const pageData = filteredProducts.slice(start, end);
-                    
-                            pageData.forEach((product, index) => {
-                                const row = `
-                                    <tr>
-                                        <td>${start + index + 1}</td>
-                                        <td>${product.name}</td>
-                                        <td>${product.weight} ${product.unit_type}</td>
-                                        <td>${product.size}</td>
-                                        <td>${product.quantity_per_package}</td>
-                                    </tr>
-                                `;
-                                tableBody.insertAdjacentHTML("beforeend", row);
-                            });
-                        }
-                    
-                        function renderPagination() {
-                            const totalPages = Math.ceil(filteredProducts.length / rowsPerPage);
-                            const pagination = document.querySelector("#pagination");
-                            pagination.innerHTML = "";
-                    
-                            if (totalPages <= 1) return; // Esconde paginação se houver apenas uma página
-                    
-                            pagination.insertAdjacentHTML(
-                                "beforeend",
-                                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
-                                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
-                                </li>`
-                            );
-                    
-                            for (let i = 1; i <= totalPages; i++) {
-                                pagination.insertAdjacentHTML(
-                                    "beforeend",
-                                    `<li class="page-item ${i === currentPage ? "active" : ""}">
-                                        <button class="page-link" data-page="${i}">${i}</button>
-                                    </li>`
-                                );
-                            }
-                    
-                            pagination.insertAdjacentHTML(
-                                "beforeend",
-                                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
-                                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
-                                </li>`
-                            );
-                    
-                            document.querySelectorAll("#pagination .page-link").forEach((button) => {
-                                button.addEventListener("click", function () {
-                                    const page = parseInt(this.dataset.page, 10);
-                                    if (!isNaN(page) && page > 0 && page <= totalPages) {
-                                        currentPage = page;
-                                        renderTable();
-                                        renderPagination();
-                                    }
-                                });
-                            });
-                        }
-                    
-                        document.querySelector("#searchInput").addEventListener("input", function () {
-                            const searchText = this.value.trim();
-                            fetchProducts(searchText); // Faz a busca na API
-                        });
-                    
-                        fetchProducts(); // Carrega os produtos ao iniciar
-                    });
-                    
-                        renderTable();
-                        renderPagination();
-                    }
-                });
-            });
-        }
-    
+
         document.querySelector("#searchInput").addEventListener("input", function () {
             const searchText = this.value.trim();
             fetchProducts(searchText); // Faz a busca na API

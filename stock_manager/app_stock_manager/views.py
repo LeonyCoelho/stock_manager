@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProduct, Purchase, PurchaseProduct, Boleto
+from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProduct, Purchase, PurchaseProduct, Boleto, Manufacturer
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
@@ -125,6 +125,9 @@ def edit_customer(request, customer_id):
 
     if request.method == "POST":
         customer.name = request.POST.get("name")
+        customer.contact_name = request.POST.get("contact_name")
+        customer.phone = request.POST.get("phone")
+        customer.email = request.POST.get("email")
         customer.cep = request.POST.get("cep")
         customer.street = request.POST.get("street")
         customer.address_number = request.POST.get("address_number")
@@ -137,7 +140,7 @@ def edit_customer(request, customer_id):
 
         customer.save()
         messages.success(request, "Cliente atualizado com sucesso!")
-        return redirect("view_customers")  # Página que lista os clientes
+        return redirect("view_customers")
 
     return render(request, "pages/edit_customer.html", {"customer": customer})
 
@@ -146,6 +149,12 @@ def delete_customer(request, customer_id):
     customer = get_object_or_404(Customer, id=customer_id)
     customer.delete()
     return redirect("view_customers")  # Redireciona para a lista de clientes
+
+@login_required
+def delete_manufacturer(request, manufacturer_id):
+    manufacturer = get_object_or_404(Manufacturer, id=manufacturer_id)
+    manufacturer.delete()
+    return redirect("view_manufactures")  # Redireciona para a lista de clientes
 
 @login_required
 def view_suppliers(request):
@@ -161,19 +170,24 @@ def edit_supplier(request, supplier_id):
 
     if request.method == "POST":
         supplier.name = request.POST.get("name")
+        supplier.cnpj = request.POST.get("cnpj")
+        supplier.contact_name = request.POST.get("contact_name")
+        supplier.phone = request.POST.get("phone")
+        supplier.email = request.POST.get("email")
         supplier.cep = request.POST.get("cep")
         supplier.street = request.POST.get("street")
         supplier.address_number = request.POST.get("address_number")
         supplier.district = request.POST.get("district")
         supplier.state = request.POST.get("state")
         supplier.city = request.POST.get("city")
-        supplier.cpf_or_cnpj = request.POST.get("cpf_or_cnpj")
-        supplier.is_cnpj = request.POST.get("is_cnpj") == "true"
         supplier.observations = request.POST.get("observations")
 
         supplier.save()
-        messages.success(request, "Cliente atualizado com sucesso!")
-        return redirect("view_suppliers")  # Página que lista os clientes
+        messages.success(request, "Fornecedor atualizado com sucesso!")
+        return redirect("view_suppliers")
+
+    return render(request, "pages/edit_supplier.html", {"supplier": supplier})
+
 
     return render(request, "pages/edit_supplier.html", {"supplier": supplier})
 
@@ -190,6 +204,12 @@ def view_products(request):
 @login_required
 def new_product(request):
     return render(request, 'pages/new_product.html')
+
+@csrf_exempt
+@login_required
+def edit_product(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    return render(request, 'pages/edit_product.html',{"product": product})
 
 @login_required
 def view_stocks(request):
@@ -211,6 +231,13 @@ def view_purchases(request):
 def new_purchase(request):
     return render(request, 'pages/new_purchase.html')
 
+@login_required
+def view_manufactures(request):
+    return render(request, 'pages/list_manufacturer.html')
+
+@login_required
+def new_manufacturer(request):
+    return render(request, 'pages/new_manufacturer.html')
 
 
 # ======================= FUNCIONS ============================================
@@ -240,6 +267,9 @@ def add_category(request):
 def add_customer(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
+        contact_name = request.POST.get("contact_name", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        email = request.POST.get("email", "").strip()
         cep = request.POST.get("cep", "").strip()
         street = request.POST.get("street", "").strip()
         address_number = request.POST.get("address_number", "").strip()
@@ -256,6 +286,9 @@ def add_customer(request):
         try:
             customer = Customer.objects.create(
                 name=name,
+                contact_name=contact_name,
+                phone=phone,
+                email=email,
                 cpf_or_cnpj=cpf_or_cnpj,
                 is_cnpj=is_cnpj,
                 street=street,
@@ -272,25 +305,48 @@ def add_customer(request):
     else:
         return redirect('home')
 
+
+@csrf_exempt
 @login_required
 def add_supplier(request):
     if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        cnpj = request.POST.get("cnpj", "").strip()
-        observations = request.POST.get("observations", "").strip()
-
-        if not name:
-            return JsonResponse({"error": "O campo 'Nome' é obrigatório."}, status=400)
-
         try:
+            name = request.POST.get("name", "").strip()
+            cnpj = request.POST.get("cnpj", "").strip()
+            contact_name = request.POST.get("contact_name", "").strip()
+            phone = request.POST.get("phone", "").strip()
+            email = request.POST.get("email", "").strip()
+            street = request.POST.get("street", "").strip()
+            address_number = request.POST.get("address_number", "").strip()
+            district = request.POST.get("district", "").strip()
+            city = request.POST.get("city", "").strip()
+            state = request.POST.get("state", "").strip()
+            cep = request.POST.get("cep", "").strip()
+            observations = request.POST.get("observations", "").strip()
+
+            if not name:
+                return JsonResponse({"error": "O campo 'Nome' é obrigatório."}, status=400)
+
             supplier = Supplier.objects.create(
                 name=name,
                 cnpj=cnpj,
+                contact_name=contact_name,
+                phone=phone,
+                email=email,
+                street=street,
+                address_number=address_number,
+                district=district,
+                city=city,
+                state=state,
+                cep=cep,
                 observations=observations,
             )
+
             return redirect('view_suppliers')
+
         except Exception as e:
             return JsonResponse({"error": f"Erro ao salvar fornecedor: {str(e)}"}, status=500)
+
     else:
         return redirect('home')
 
@@ -299,16 +355,17 @@ def add_supplier(request):
 def add_product(request):
     if request.method == "POST":
         try:
-            # Tente carregar os dados enviados na requisição
             data = json.loads(request.body)
 
-            # Captura os campos
             name = data.get("name", "").strip()
             weight = data.get("weight", "").strip()
             unit_type = data.get("unit_type", "").strip()
             size = data.get("size", "").strip()
             quantity_per_package = data.get("quantity_per_package", "").strip()
             observations = data.get("observations", "").strip()
+
+            manufacturer_id = data.get("manufacturer")
+            category_id = data.get("category")
 
             # Validações
             if not name:
@@ -320,7 +377,9 @@ def add_product(request):
             if not quantity_per_package.isdigit() or int(quantity_per_package) <= 0:
                 return JsonResponse({"error": "O campo 'Quantidade por Pacote' deve ser um número positivo."}, status=400)
 
-            # Salva o produto no banco de dados
+            manufacturer = Manufacturer.objects.filter(id=manufacturer_id).first()
+            category = Category.objects.filter(id=category_id).first()
+
             product = Product.objects.create(
                 name=name,
                 weight=int(weight),
@@ -328,25 +387,54 @@ def add_product(request):
                 size=size,
                 quantity_per_package=int(quantity_per_package),
                 observations=observations,
+                manufacturer=manufacturer,
+                category=category,
             )
 
-            # Cria o perfil no estoque com quantidade inicial 0
             Stock.objects.create(
                 product=product,
-                quantity=0,  # Quantidade inicial
-                price=0.0,   # Preço inicial, ajuste se necessário
+                quantity=0,
+                price=0.0,
             )
+
             return JsonResponse({"message": "Produto adicionado com sucesso!", "id": product.id})
+
         except json.JSONDecodeError as e:
-            # Erro ao decodificar JSON
             return JsonResponse({"error": f"Dados JSON inválidos: {str(e)}"}, status=400)
         except Exception as e:
-            # Outros erros
             return JsonResponse({"error": f"Erro ao processar a solicitação: {str(e)}"}, status=500)
 
-    # Se o método não for POST
     return JsonResponse({"error": "Método não permitido."}, status=405)
-    
+
+@csrf_exempt
+@login_required
+def update_product(request, product_id):
+    if request.method == "POST":
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            data = json.loads(request.body)
+
+            product.name = data.get("name", product.name).strip()
+            product.weight = int(data.get("weight", product.weight))
+            product.unit_type = data.get("unit_type", product.unit_type)
+            product.size = data.get("size", product.size)
+            product.quantity_per_package = int(data.get("quantity_per_package", product.quantity_per_package))
+            product.observations = data.get("observations", product.observations)
+
+            manufacturer_id = data.get("manufacturer")
+            category_id = data.get("category")
+
+            product.manufacturer = Manufacturer.objects.filter(id=manufacturer_id).first() if manufacturer_id else None
+            product.category = Category.objects.filter(id=category_id).first() if category_id else None
+
+            product.save()
+
+            return JsonResponse({"message": "Produto atualizado com sucesso!"})
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Método não permitido"}, status=405)
+
 @csrf_exempt
 @login_required
 def add_sale(request):
@@ -490,6 +578,24 @@ def convert_quote_to_sale(request, sale_id):
     
     except Exception as e:
         return JsonResponse({"success": False, "message": f"Erro ao converter: {str(e)}"}, status=400)
+
+@login_required
+def add_manufacturer(request):
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+
+        if not name:
+            return JsonResponse({"error": "O campo 'Nome' é obrigatório."}, status=400)
+
+        try:
+            manufacturer = Manufacturer.objects.create(
+                name=name
+            )
+            return redirect('view_manufactures')
+        except Exception as e:
+            return JsonResponse({"error": f"Erro ao salvar fornecedor: {str(e)}"}, status=500)
+    else:
+        return redirect('home')
     
 @login_required
 def edit_quote(request, quote_id):
@@ -531,8 +637,6 @@ def edit_quote(request, quote_id):
         "quote_data": json.dumps(quote_data),  # ✅ Passa os dados do orçamento para o template
     }
     return render(request, "pages/edit_quote.html", context)
-
-
 
 @csrf_exempt
 @login_required
@@ -581,7 +685,6 @@ def update_quote(request, quote_id):
 
     return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
 
-
 @csrf_exempt
 @login_required
 def delete_sale(request, sale_id):
@@ -604,8 +707,6 @@ def delete_sale(request, sale_id):
             return JsonResponse({"success": False, "error": str(e)}, status=400)
 
     return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
-
-
 
 @csrf_exempt
 @login_required
@@ -782,11 +883,9 @@ def pay_boleto(request, boleto_id):
         return JsonResponse({"message": "Boleto marcado como pago com sucesso.", "boleto_id": boleto.id})
     return JsonResponse({"error": "Método não permitido."}, status=405)
 
-
 # ======================== RELATORIOS =======================================
 
 # ============ PRODUTOS
-
 def gerar_relatorio_produtos(request):
     # Recebe o filtro de categoria e formato
     category_id = request.GET.get('categoria')  # ID da categoria recebida via GET
@@ -962,7 +1061,6 @@ def gerar_relatorio_produtos_pdf(stock_data, categoria):
     return response
 
 # ============ VENDAS
-
 def gerar_relatorio_vendas(request):
     # Recebe as datas de início e fim do filtro
     data_inicial = request.GET.get('data_inicial')
@@ -991,11 +1089,11 @@ def gerar_relatorio_vendas(request):
     else:
         return JsonResponse({"success": False, "error": "Formato não suportado"}, status=400)
 
-def gerar_excel_vendas(vendas, data_inicial, data_final):
+def gerar_excel_compras(compras, data_inicial, data_final):
     # Função para gerar o relatório em Excel
     wb = Workbook()
     ws = wb.active
-    ws.title = "Relatório de Vendas"
+    ws.title = "Relatório de Compras"
     
     # Título do relatório
     if data_inicial and data_final:
@@ -1005,32 +1103,30 @@ def gerar_excel_vendas(vendas, data_inicial, data_final):
     else:
         filtro_data = "Sem filtro de data"
 
-    titulo = f"Relatório de Vendas - Filtro: {filtro_data}"
+    titulo = f"Relatório de Compras - Filtro: {filtro_data}"
     ws.merge_cells('A1:H1')
     ws['A1'] = titulo
     ws['A1'].alignment = Alignment(horizontal='center')
 
     # Cabeçalhos da tabela
     headers = [
-        "ID da Venda", "Cliente", "Vendedor", "Data da Venda",
-        "Tipo de Pagamento", "Valor Total", "Total de Itens", "Observações"
+        "ID da Compra", "Fornecedor", "Usuario", "Data da Compra", "Valor Total", "Total de Itens", "Observações"
     ]
     for col_num, header in enumerate(headers, 1):
         cell = ws.cell(row=2, column=col_num, value=header)
         cell.alignment = Alignment(horizontal='center')
         ws.column_dimensions[get_column_letter(col_num)].width = len(header) + 2
 
-    # Dados das vendas
-    for row_num, venda in enumerate(vendas, start=3):
-        total_itens = sum(sale_product.quantity for sale_product in venda.sale_products.all())  # Soma das quantidades de produtos vendidos
-        ws.cell(row=row_num, column=1, value=venda.id)
-        ws.cell(row=row_num, column=2, value=venda.customer.name)
-        ws.cell(row=row_num, column=3, value=venda.user.username)
-        ws.cell(row=row_num, column=4, value=venda.created.strftime('%d/%m/%Y'))
-        ws.cell(row=row_num, column=5, value=venda.get_payment_type_display())
-        ws.cell(row=row_num, column=6, value=venda.full_price)
+    # Dados das compras
+    for row_num, compra in enumerate(compras, start=3):
+        total_itens = sum(purchase_product.quantity for purchase_product in compra.purchase_products.all())  # Soma das quantidades de produtos vendidos
+        ws.cell(row=row_num, column=1, value=compra.id)
+        ws.cell(row=row_num, column=2, value=compra.supplier.name)
+        ws.cell(row=row_num, column=3, value=compra.user.username)
+        ws.cell(row=row_num, column=4, value=compra.created.strftime('%d/%m/%Y'))
+        ws.cell(row=row_num, column=6, value=compra.full_price)
         ws.cell(row=row_num, column=7, value=total_itens)
-        ws.cell(row=row_num, column=8, value=venda.observations or "")
+        ws.cell(row=row_num, column=8, value=compra.observations or "")
 
         # Alinhamento à esquerda
         for col_num in range(1, 9):
@@ -1040,7 +1136,7 @@ def gerar_excel_vendas(vendas, data_inicial, data_final):
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
-    filename = f"relatorio_vendas_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+    filename = f"relatorio_compras_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
     response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
     return response
@@ -1113,7 +1209,6 @@ def gerar_pdf_vendas(vendas, data_inicial, data_final):
     return response
 
 # ============ COMPRAS
-
 def gerar_relatorio_compras(request):
     # Recebe as datas de início e fim do filtro
     data_inicial = request.GET.get('data_inicial')
@@ -1271,6 +1366,15 @@ def get_all_categories(request):
 
     return JsonResponse({'categories': categories_list})
 
+def get_all_manufacturers(request):
+    manufacturers = Manufacturer.objects.all()
+    manufacturers_list = [{
+        "id": manufacturer.id,
+        'name': manufacturer.name
+    } for manufacturer in manufacturers]
+
+    return JsonResponse({'manufacturers': manufacturers_list})
+
 def get_all_customers(request):
     query = request.GET.get("search", "").strip()
 
@@ -1278,15 +1382,19 @@ def get_all_customers(request):
 
     if query:
         customers = customers.filter(
-            Q(name__icontains=query) |  # Busca pelo nome
-            Q(cpf_or_cnpj__icontains=query)  # Busca pelo CPF/CNPJ
+            Q(name__icontains=query) |
+            Q(cpf_or_cnpj__icontains=query)
         )
 
-    # Coleta IDs de clientes com boletos vencidos
+    # Busca clientes com boletos vencidos
     today = now().date()
-    boletos_vencidos = Boleto.objects.filter(status="Pendente", due_date__lt=today)
-    clientes_com_vencidos = set(boletos_vencidos.values_list("sale__customer_id", flat=True))
-
+    boletos_vencidos = Boleto.objects.filter(
+        status="Pendente",
+        due_date__lt=today
+    )
+    clientes_com_vencidos = set(
+        boletos_vencidos.values_list("sale__customer_id", flat=True)
+    )
 
     customer_list = [{
         'id': customer.id,
@@ -1299,9 +1407,11 @@ def get_all_customers(request):
         'city': customer.city,
         'state': customer.state,
         'cep': customer.cep,
+        'contact_name': customer.contact_name,
+        'phone': customer.phone,
+        'email': customer.email,
         'observations': customer.observations,
-        'has_overdue_boleto': customer.id in clientes_com_vencidos
-
+        'has_overdue_boleto': customer.id in clientes_com_vencidos,
     } for customer in customers]
 
     return JsonResponse({'customers': customer_list})
@@ -1313,30 +1423,50 @@ def get_all_suppliers(request):
 
     if query:
         suppliers = suppliers.filter(
-            Q(name__icontains=query) |  # Busca pelo nome
-            Q(cnpj__icontains=query)  # Busca pelo CNPJ
+            Q(name__icontains=query) |
+            Q(cnpj__icontains=query) |
+            Q(email__icontains=query) |
+            Q(phone__icontains=query)
         )
 
     supplier_list = [{
         'id': supplier.id,
         'name': supplier.name,
+        'contact_name': supplier.contact_name,
+        'phone': supplier.phone,
+        'email': supplier.email,
+        'street': supplier.street,
+        'address_number': supplier.address_number,
+        'district': supplier.district,
+        'city': supplier.city,
+        'state': supplier.state,
+        'cep': supplier.cep,
         'cnpj': supplier.cnpj,
         'observations': supplier.observations,
+        'created': supplier.created.strftime('%Y-%m-%d %H:%M:%S'),
     } for supplier in suppliers]
 
     return JsonResponse({'suppliers': supplier_list})
 
 def get_all_products(request):
     query = request.GET.get("search", "").strip()
-    
+
     products = Product.objects.all()
-    
+
     if query:
         products = products.filter(Q(name__icontains=query))
-    
+
     product_list = [{
         'id': product.id,
         'name': product.name,
+        'manufacturer': {
+            'id': product.manufacturer.id,
+            'name': product.manufacturer.name
+        } if product.manufacturer else None,
+        'category': {
+            'id': product.category.id,
+            'name': product.category.name
+        } if product.category else None,
         'weight': product.weight,
         'unit_type': product.get_unit_type_display(),
         'size': product.size,
@@ -1520,7 +1650,6 @@ def get_all_purchases(request):
 
     return JsonResponse({"purchases": purchase_list})
 
-
 def get_summary(request):
     today = now().date()
     start_of_week = today - timedelta(days=today.weekday())
@@ -1687,3 +1816,23 @@ def get_product_prices(request, product_id):
         })
     except Product.DoesNotExist:
         return JsonResponse({"error": "Produto não encontrado"}, status=404)
+
+@login_required
+def get_product_by_id(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    product_data = {
+        'id': product.id,
+        'name': product.name,
+        'weight': product.weight,
+        'unit_type': product.unit_type,
+        'size': product.size,
+        'quantity_per_package': product.quantity_per_package,
+        'observations': product.observations,
+        'manufacturer_id': product.manufacturer.id if product.manufacturer else None,
+        'manufacturer_name': product.manufacturer.name if product.manufacturer else None,
+        'category_id': product.category.id if product.category else None,
+        'category_name': product.category.name if product.category else None,
+    }
+
+    return JsonResponse(product_data)

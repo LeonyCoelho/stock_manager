@@ -20,12 +20,11 @@
                         <th>Nome</th>
                         <th>CPF/CNPJ</th>
                         <th>Tipo</th>
+                        <th>Contato</th>
+                        <th>Telefone</th>
+                        <th>Email</th>
                         <th>Endereço</th>
-                        <th>Bairro</th>
-                        <th>Cidade</th>
-                        <th>Estado</th>
-                        <th>CEP</th>
-                        <th></th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,17 +92,24 @@
             pageData.forEach((customer, index) => {
                 const row = `
                     <tr>
-                        <td hidden>${start + index + 1}</td>
                         <td>${customer.id}</td>
-                        <td>${customer.name}    ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}
-</td>
+                        <td>
+                            ${customer.name}
+                            ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}
+                        </td>
                         <td>${customer.cpf_or_cnpj}</td>
                         <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>
-                        <td>${customer.street}, ${customer.address_number}</td>
-                        <td>${customer.district}</td>
-                        <td>${customer.city}</td>
-                        <td>${customer.state}</td>
-                        <td>${customer.cep}</td>
+                        <td>${customer.contact_name ? customer.contact_name : "Sem contato"}</td>
+                        <td>${customer.phone ? customer.phone : "Sem telefone"}</td>
+                        <td>${customer.email ? customer.email : "Sem email"}</td>
+                        <td>
+                            ${customer.street ? customer.street : "Sem rua"},
+                            ${customer.address_number ? customer.address_number : "s/n"},
+                            ${customer.district ? customer.district : "Sem bairro"},
+                            ${customer.city ? customer.city : "Sem cidade"} - 
+                            ${customer.state ? customer.state : "Sem estado"},
+                            CEP: ${customer.cep ? customer.cep : "Sem CEP"}
+                        </td>
                         <td>
                             <a href="/customer/edit/${customer.id}/" class="btn btn-sm btn-warning">
                                 <i class="nf nf-fa-edit"></i>
@@ -114,6 +120,7 @@
                         </td>
                     </tr>
                 `;
+
                 tableBody.insertAdjacentHTML("beforeend", row);
             });
         }
@@ -229,17 +236,24 @@
             pageData.forEach((customer, index) => {
                 const row = `
                     <tr>
-                        <td hidden>${start + index + 1}</td>
                         <td>${customer.id}</td>
-                        <td>${customer.name}    ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}
-</td>
+                        <td>
+                            ${customer.name}
+                            ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}
+                        </td>
                         <td>${customer.cpf_or_cnpj}</td>
                         <td>${customer.is_cnpj ? "CNPJ" : "CPF"}</td>
-                        <td>${customer.street}, ${customer.address_number}</td>
-                        <td>${customer.district}</td>
-                        <td>${customer.city}</td>
-                        <td>${customer.state}</td>
-                        <td>${customer.cep}</td>
+                        <td>${customer.contact_name ? customer.contact_name : "Sem contato"}</td>
+                        <td>${customer.phone ? customer.phone : "Sem telefone"}</td>
+                        <td>${customer.email ? customer.email : "Sem email"}</td>
+                        <td>
+                            ${customer.street ? customer.street : "Sem rua"},
+                            ${customer.address_number ? customer.address_number : "s/n"},
+                            ${customer.district ? customer.district : "Sem bairro"},
+                            ${customer.city ? customer.city : "Sem cidade"} - 
+                            ${customer.state ? customer.state : "Sem estado"},
+                            CEP: ${customer.cep ? customer.cep : "Sem CEP"}
+                        </td>
                         <td>
                             <a href="/customer/edit/${customer.id}/" class="btn btn-sm btn-warning">
                                 <i class="nf nf-fa-edit"></i>
@@ -250,6 +264,7 @@
                         </td>
                     </tr>
                 `;
+
                 tableBody.insertAdjacentHTML("beforeend", row);
             });
         }

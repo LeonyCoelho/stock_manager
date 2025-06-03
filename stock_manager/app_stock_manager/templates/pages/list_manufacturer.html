@@ -5,25 +5,16 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <span>Lista de Fornecedores</span>
             <span class="d-flex justify-content-between align-items-center">
-                <div class="input-group">
-                    <input type="text" class="form-control form-control-sm" placeholder="Pesquisar" aria-label="Pesquisar" aria-describedby="button-addon2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" id="button-addon2">Button</button>
-                </div>
-                <a href="{% url 'new_supplier' %}" class="btn btn-primary btn-sm  ms-3">Novo</a>
+
+                <a href="{% url 'new_manufacturer' %}" class="btn btn-primary btn-sm  ms-3">Novo</a>
             </span>
         </div>        
         <div class="card-body">
-            <table class="table table-bordered table-striped" id="supplier-table">
+            <table class="table table-bordered table-striped" id="manufacturer-table">
                 <thead class="table">
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>
-                        <th>Contato</th>
-                        <th>Telefone</th>
-                        <th>Email</th>
-                        <th>CNPJ</th>
-                        <th>Endereço</th>
-                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,6 +52,101 @@
 
     <!-- Controles de Paginação -->
 </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/manufacturers/";
+        const rowsPerPage = 20;
+        let currentPage = 1;
+        let manufacturers = [];
+
+        // Função para buscar dados da API
+        async function fetchCustomers() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                manufacturers = data.manufacturers || [];
+                renderTable();
+                renderPagination();
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+
+        // Função para renderizar a tabela
+        function renderTable() {
+            const tableBody = document.querySelector("#manufacturer-table tbody");
+            tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
+
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageData = manufacturers.slice(start, end);
+
+            pageData.forEach((manufacturer, index) => {
+                const row = `
+                    <tr>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${manufacturer.id}</td>
+                        <td>${manufacturer.name}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDelete(${manufacturer.id})">
+                                <i class="nf nf-fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML("beforeend", row);
+            });
+        }
+
+        // Função para renderizar os botões de paginação
+        function renderPagination() {
+            const totalPages = Math.ceil(manufacturers.length / rowsPerPage);
+            const pagination = document.querySelector("#pagination");
+            pagination.innerHTML = ""; // Limpa os botões antes de renderizar
+
+            // Botão "Anterior"
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage - 1}">Anterior</button>
+                </li>`
+            );
+
+            // Botões de página
+            for (let i = 1; i <= totalPages; i++) {
+                pagination.insertAdjacentHTML(
+                    "beforeend",
+                    `<li class="page-item ${i === currentPage ? "active" : ""}">
+                        <button class="page-link" data-page="${i}">${i}</button>
+                    </li>`
+                );
+            }
+
+            // Botão "Próximo"
+            pagination.insertAdjacentHTML(
+                "beforeend",
+                `<li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+                    <button class="page-link" data-page="${currentPage + 1}">Próximo</button>
+                </li>`
+            );
+
+            // Adiciona eventos aos botões
+            document.querySelectorAll("#pagination .page-link").forEach((button) => {
+                button.addEventListener("click", function () {
+                    const page = parseInt(this.dataset.page, 10);
+                    if (!isNaN(page) && page > 0 && page <= totalPages) {
+                        currentPage = page;
+                        renderTable();
+                        renderPagination();
+                    }
+                });
+            });
+        }
+
+        // Inicializa a tabela
+        fetchCustomers();
+    });
+</script>
 
 <script>
     function confirmDelete(supplierId) {
@@ -68,7 +154,7 @@
         
         // Define a ação do botão "Deletar"
         document.getElementById("confirmDeleteBtn").onclick = function () {
-            window.location.href = `/supplier/delete/${supplierId}/`;
+            window.location.href = `/manufacturers/delete/${supplierId}/`;
         };
 
         // Exibe o modal
@@ -79,7 +165,7 @@
 <script>
 
     document.addEventListener("DOMContentLoaded", function () {
-        const apiUrl = "/api/suppliers/";
+        const apiUrl = "/api/manufacturers/";
         const rowsPerPage = 20;
         let currentPage = 1;
         let supplierData = [];
@@ -96,7 +182,7 @@
                 if (!response.ok) throw new Error("Erro ao buscar dados da API");
     
                 const data = await response.json();
-                supplierData = data.suppliers || [];
+                supplierData = data.manufacturers || [];
     
                 filteredSuppliers = [...supplierData]; // Garante que a lista filtrada sempre tenha os dados carregados
                 currentPage = 1; // Reseta para a primeira página
@@ -108,7 +194,7 @@
         }
     
         function renderTable() {
-            const tableBody = document.querySelector("#supplier-table tbody");
+            const tableBody = document.querySelector("#manufacturer-table tbody");
             tableBody.innerHTML = ""; // Limpa a tabela antes de renderizar
     
             if (filteredSuppliers.length === 0) {
@@ -120,34 +206,19 @@
             const end = start + rowsPerPage;
             const pageData = filteredSuppliers.slice(start, end);
     
-            pageData.forEach((supplier, index) => {
-const row = `
-<tr>
-    <td>${supplier.id}</td>
-    <td>${supplier.name}</td>
-    <td>${supplier.contact_name || "Sem contato"}</td>
-    <td>${supplier.phone || "Sem telefone"}</td>
-    <td>${supplier.email || "Sem email"}</td>
-    <td>${supplier.cnpj || "Sem cnpj"}</td>
-    <td>
-        ${supplier.street || " "}, 
-        ${supplier.address_number || " "} - 
-        ${supplier.district || " "} - 
-        ${supplier.city || " "} - 
-        ${supplier.state || " "} - 
-        ${supplier.cep || " "}
-    </td>
-    <td>
-        <a href="/supplier/edit/${supplier.id}/" class="btn btn-sm btn-warning">
-            <i class="nf nf-fa-edit"></i>
-        </a>
-        <button class="btn btn-sm btn-danger" onclick="confirmDelete(${supplier.id})">
-            <i class="nf nf-fa-trash"></i>
-        </button>
-    </td>
-</tr>
-`;
-
+            pageData.forEach((manufacturer, index) => {
+                const row = `
+                    <tr>
+                        <td hidden>${start + index + 1}</td>
+                        <td>${manufacturer.id}</td>
+                        <td>${manufacturer.name}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDelete(${manufacturer.id})">
+                                <i class="nf nf-fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
                 tableBody.insertAdjacentHTML("beforeend", row);
             });
         }

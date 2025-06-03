@@ -11,26 +11,54 @@ class Category(models.Model):
 
 class Customer(models.Model):
     name = models.CharField(max_length=255)
+    contact_name = models.CharField(max_length=255, blank=True, null=True)   # Nome do contato
+    phone = models.CharField(max_length=20, blank=True, null=True)           # Telefone
+    email = models.EmailField(blank=True, null=True)                         # Email
+
     created = models.DateTimeField(auto_now_add=True)
     cpf_or_cnpj = models.CharField(max_length=20, verbose_name="CPF ou CNPJ")
     is_cnpj = models.BooleanField(default=False)
+
+    # Endereço
     address_number = models.CharField(max_length=20)
     street = models.CharField(max_length=255)
     district = models.CharField(max_length=255)
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=50)
     cep = models.CharField(max_length=20)
-    observations = models.TextField(blank=True, null=True)  
+
+    observations = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
 
 
+
 class Supplier(models.Model):
     name = models.CharField(max_length=255)
-    created = models.DateTimeField(auto_now_add=True)
-    cnpj = models.CharField(max_length=20, default=None)
+    contact_name = models.CharField(max_length=255, blank=True, null=True)  # Nome do contato
+    phone = models.CharField(max_length=20, blank=True, null=True)           # Telefone
+    email = models.EmailField(blank=True, null=True)                         # Email
+
+    # Endereço
+    street = models.CharField(max_length=255, blank=True, null=True)         # Rua
+    address_number = models.CharField(max_length=20, blank=True, null=True)  # Número
+    district = models.CharField(max_length=255, blank=True, null=True)       # Bairro
+    city = models.CharField(max_length=255, blank=True, null=True)           # Cidade
+    state = models.CharField(max_length=50, blank=True, null=True)           # Estado
+    cep = models.CharField(max_length=20, blank=True, null=True)             # CEP
+
+    # Dados gerais
+    cnpj = models.CharField(max_length=20, blank=True, null=True)
     observations = models.TextField(blank=True, null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+class Manufacturer(models.Model):
+    name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
@@ -49,12 +77,14 @@ class Product(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     weight = models.IntegerField(default='0')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.SET_NULL, null=True)
+
     unit_type = models.CharField(
-            max_length=50,
-            verbose_name="Unit Type",
-            choices=UNIT_CHOICES,
-            default='un',
-        )
+        max_length=50,
+        verbose_name="Unit Type",
+        choices=UNIT_CHOICES,
+        default='g',
+    )
     size = models.CharField(max_length=255, default='0x0')
     quantity_per_package = models.CharField(max_length=10, default='0')
     observations = models.TextField(blank=True, null=True)
@@ -87,7 +117,7 @@ class Stock(models.Model):
 
 class Sale(models.Model):
     PAYMENT_TYPES = [
-        ('AV', 'À Vista'),
+        ('DH', 'Dinheiro'),
         ('PX', 'PIX'),
         ('DB', 'Debito'),
         ('CR', 'Crédito'),
@@ -102,12 +132,13 @@ class Sale(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales")  # ALTERADO
     customer_name = models.CharField(max_length=255, blank=True, null=True)  
 
+    discount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
     payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
     observations = models.TextField(blank=True, null=True)
 
     is_quote = models.BooleanField(default=True)
-
+ 
     def save(self, *args, **kwargs):
         if self.customer and not self.customer_name:
             self.customer_name = self.customer.name  # Salva o nome antes da exclusão

@@ -16,7 +16,7 @@
                         <input class="form-control" name="name" type="text" id="name" required />
                     </div>
                     <div class="mb-2 col-2">
-                        <label class="form-label">Nº do pedido</label>
+                        <label class="form-label">Nº da Nota</label>
                         <input class="form-control" name="nfe" type="text" id="nfe" required />
                     </div>
                     
@@ -25,7 +25,7 @@
                         <div class="mb-3">
                             <label for="paymentType" class="form-label">Tipo de Pagamento</label>
                             <select class="form-select" id="paymentType" name="payment_type" required>
-                                <option value="AV">À Vista</option>
+                                <option value="DH">Dinheiro</option>
                                 <option value="PX">PIX</option>
                                 <option value="DB">Débito</option>
                                 <option value="CR">Crédito</option>
@@ -94,7 +94,7 @@
 
                 <!-- Botão de enviar -->
                 <div class="form-check form-switch mt-3">
-                    <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote">
+                    <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" checked>
                     <label class="form-check-label" for="is_quote">
                         Salvar como orçamento
                     </label>
@@ -515,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
         customers.forEach((customer) => {
             const option = document.createElement("option");
             option.value = customer.id;
-            option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+            option.textContent = `${customer.name} (${customer.cpf_or_cnpj}) ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}`;
             customerSelect.appendChild(option);
         });
     }

@@ -2,31 +2,80 @@
 {% block content %}
 {% load static %}
 <script src="{% static 'js/get_address.js' %}"></script>
+
 <div class="container">
-        <div class="card mt-3">
-            <div class="card-header">
-                Novo Fornecedor
-            </div>
-            <div class="card-body">
-                <form method="post" action="{% url 'add_supplier' %}">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="mb-2 col-8">
-                            <label class="form-label">Nome:</label>
-                            <input class="form-control" name="name" type="text" id="name" />
-                        </div>
-                        <div class="mb-2 col">
-                            <label class="form-label">CNPJ</label>
-                            <input class="form-control" name="cnpj" type="text" id="cnpj" />
-                        </div>
-                    </div>
-                    <label class="form-label">Observações</label>
-                    <textarea class="form-control" name="observations" rows="4"></textarea>
-                    <button type="submit" class="btn btn-primary mt-3">Adicionar Fornecedor</button>
-                    <a class="btn btn-secondary mt-3" href="{% url 'view_customers' %}">Voltar</a>
-                </form>
-                
-            </div>
+    <div class="card mt-3">
+        <div class="card-header">
+            Novo Fornecedor
         </div>
+        <div class="card-body">
+            <form method="post" action="{% url 'add_supplier' %}">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="mb-2 col-8">
+                        <label class="form-label">Nome:</label>
+                        <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">CNPJ</label>
+                        <input class="form-control" name="cnpj" type="text" id="cnpj" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Nome do Contato</label>
+                        <input class="form-control" name="contact_name" type="text" id="contact_name" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Telefone</label>
+                        <input class="form-control" name="phone" type="text" id="phone" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" name="email" type="email" id="email" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="mb-2 col-2">
+                        <label class="form-label" for="cep">CEP</label>
+                        <input class="form-control" name="cep" type="text" id="cep" maxlength="9" onblur="pesquisacep(this.value);" />
+                    </div>
+                    <div class="mb-2 col-8">
+                        <label class="form-label">Rua</label>
+                        <input class="form-control" name="street" type="text" id="street" />
+                    </div>
+                    <div class="mb-2 col-2">
+                        <label class="form-label">Número</label>
+                        <input class="form-control" name="address_number" type="text" id="address_number" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Bairro</label>
+                        <input class="form-control" name="district" type="text" id="district" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Cidade</label>
+                        <input class="form-control" name="city" type="text" id="city" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Estado</label>
+                        <input class="form-control" name="state" type="text" id="state" />
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label">Observações</label>
+                    <textarea class="form-control" name="observations" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-3">Adicionar Fornecedor</button>
+                <a class="btn btn-secondary mt-3" href="{% url 'view_suppliers' %}">Voltar</a>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

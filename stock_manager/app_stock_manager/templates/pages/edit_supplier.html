@@ -14,15 +14,63 @@
                 <div class="row">
                     <div class="mb-2 col-8">
                         <label class="form-label">Nome:</label>
-                        <input class="form-control" name="name" type="text" id="name" value="{{ supplier.name|default:'' }}" required />
+                        <input class="form-control" name="name" type="text" value="{{ supplier.name|default:'' }}" required />
                     </div>
                     <div class="mb-2 col">
-                        <label class="form-label">CNPJ</label>
-                        <input class="form-control" name="cnpj" type="text" id="cnpj" value="{{ supplier.cnpj|default:'' }}" required />
+                        <label class="form-label">CNPJ:</label>
+                        <input class="form-control" name="cnpj" type="text" value="{{ supplier.cnpj|default:'' }}" required />
                     </div>
                 </div>
-                <label class="form-label">Observações</label>
-                <textarea class="form-control" name="observations" rows="4">{{ supplier.observations|default:'' }}</textarea>
+
+                <div class="row">
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Nome do Contato:</label>
+                        <input class="form-control" name="contact_name" type="text" value="{{ supplier.contact_name|default:'' }}" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Telefone:</label>
+                        <input class="form-control" name="phone" type="text" value="{{ supplier.phone|default:'' }}" />
+                    </div>
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Email:</label>
+                        <input class="form-control" name="email" type="email" value="{{ supplier.email|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="mb-2 col-2">
+                        <label class="form-label">CEP:</label>
+                        <input class="form-control" name="cep" type="text" maxlength="9" value="{{ supplier.cep|default:'' }}" onblur="pesquisacep(this.value);" />
+                    </div>
+                    <div class="mb-2 col-8">
+                        <label class="form-label">Rua:</label>
+                        <input class="form-control" name="street" type="text" value="{{ supplier.street|default:'' }}" />
+                    </div>
+                    <div class="mb-2 col-2">
+                        <label class="form-label">Número:</label>
+                        <input class="form-control" name="address_number" type="text" value="{{ supplier.address_number|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="mb-2 col">
+                        <label class="form-label">Bairro:</label>
+                        <input class="form-control" name="district" type="text" value="{{ supplier.district|default:'' }}" />
+                    </div>
+                    <div class="mb-2 col">
+                        <label class="form-label">Cidade:</label>
+                        <input class="form-control" name="city" type="text" value="{{ supplier.city|default:'' }}" />
+                    </div>
+                    <div class="mb-2 col">
+                        <label class="form-label">Estado:</label>
+                        <input class="form-control" name="state" type="text" value="{{ supplier.state|default:'' }}" />
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label">Observações:</label>
+                    <textarea class="form-control" name="observations" rows="4">{{ supplier.observations|default:'' }}</textarea>
+                </div>
 
                 <button type="submit" class="btn btn-success mt-3">Salvar Alterações</button>
                 <a class="btn btn-secondary mt-3" href="{% url 'view_suppliers' %}">Voltar</a>

@@ -20,8 +20,14 @@ urlpatterns = [
     path("supplier/edit/<int:supplier_id>/", views.edit_supplier, name="edit_supplier"),
     path("supplier/delete/<int:supplier_id>/", views.delete_supplier, name="delete_supplier"),
 
+    path('manufactures/', views.view_manufactures, name='view_manufactures'),
+    path('manufacturers/new/', views.new_manufacturer, name='new_manufacturer'),
+    path("manufacturers/delete/<int:manufacturer_id>/", views.delete_manufacturer, name="delete_manufacturer"),
+
     path('products/new/', views.new_product, name='new_product'),
     path('products/', views.view_products, name='view_products'),
+    path("products/edit/<int:product_id>/", views.edit_product, name="edit_product"),
+    
     path('stocks/', views.view_stocks, name='view_stocks'),
     path('sales/', views.view_sales, name='view_sales'),
     path('sales/new/', views.new_sale, name='new_sale'),
@@ -39,8 +45,11 @@ urlpatterns = [
     path('add-customer/', views.add_customer, name='add_customer'),
     path('add-supplier/', views.add_supplier, name='add_supplier'),
     path('add-product/', views.add_product, name='add_product'),
+    path('api/products/<int:product_id>/', views.get_product_by_id, name='get_product_by_id'),
+    path('api/products/<int:product_id>/update/', views.update_product, name='update_product'),
     path('add-sale/', views.add_sale, name='add_sale'),
     path('add-purchase/', views.add_purchase, name='add_purchase'),
+    path('add-manufacturer/', views.add_manufacturer, name='add_manufacturer'),
     path("api/stocks/<int:stock_id>/update/", views.update_stock, name="update_stock"),
     path('api/products/<int:product_id>/delete/', views.delete_product, name='delete_product'),
     path('api/boletos/<int:boleto_id>/pay/', views.pay_boleto, name='pay_boleto'),
@@ -53,6 +62,7 @@ urlpatterns = [
     # ========== GET API =====================================================
     path('api/quotes/', views.get_all_quotes, name='get_all_quotes'),
     path('api/categories/', views.get_all_categories, name='get_all_categories'),
+    path('api/manufacturers/', views.get_all_manufacturers, name='get_all_manufacturers'),
     path('api/customers/', views.get_all_customers, name='get_all_customers'),
     path('api/suppliers/', views.get_all_suppliers, name='get_all_suppliers'),
     path('api/products/', views.get_all_products, name='get_all_products'),

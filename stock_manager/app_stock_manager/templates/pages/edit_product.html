@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+
+<div class="container">
+    <div class="card mt-3">
+        <div class="card-header">
+            Editar Produto
+        </div>
+        <div class="card-body">
+            <form method="post" id="product-form">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-12">
+                        <label class="form-label">Nome:</label>
+                        <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-3">
+                        <label class="form-label">Peso:</label>
+                        <div class="input-group mb-3">
+                            <input class="form-control" name="weight" type="number" id="weight" min="0" required />
+                            <select class="form-select" name="unit_type" id="unit_type" required></select>
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <label class="form-label">Formato:</label>
+                        <div class="input-group mb-3">
+                            <input class="form-control" name="size1" type="number" id="size1" min="0" required />
+                            <span class="input-group-text">X</span>
+                            <input class="form-control" name="size2" type="number" id="size2" min="0" required />
+                        </div>
+                    </div>
+                    <div class="col-2">
+                        <label class="form-label">Qtd. por Pacote:</label>
+                        <input class="form-control" name="quantity_per_pack" type="number" id="quantity_per_pack" min="0" required />
+                    </div>
+                    <div class="col-2">
+                        <label class="form-label">Fabricante</label>
+                        <select class="form-select" name="manufacturer" id="manufacturer" required></select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label">Categoria</label>
+                        <select class="form-select" name="category" id="category" required></select>
+                    </div>
+                </div>
+                <label class="form-label">Observações</label>
+                <textarea class="form-control" name="observations" rows="4" id="observations"></textarea>
+
+                <button type="submit" class="btn btn-primary mt-3">Salvar Alterações</button>
+                <a class="btn btn-secondary mt-3" href="{% url 'view_products' %}">Voltar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const productId = "{{ product.id }}";
+
+        try {
+            await loadUnitTypes();
+            await loadCategories();
+            await loadManufacturers();
+            await loadProduct(productId);
+        } catch (error) {
+            console.error("Erro ao inicializar o formulário:", error);
+        }
+    });
+
+    async function loadUnitTypes() {
+        const select = document.getElementById("unit_type");
+        const res = await fetch("/api/unit-types/");
+        const data = await res.json();
+        data.unit_types.forEach(unit => {
+            const option = document.createElement("option");
+            option.value = unit.value;
+            option.textContent = unit.label;
+            select.appendChild(option);
+        });
+    }
+
+    async function loadCategories() {
+        const select = document.getElementById("category");
+        const res = await fetch("/api/categories/");
+        const data = await res.json();
+        data.categories.forEach(category => {
+            const option = document.createElement("option");
+            option.value = category.id;
+            option.textContent = category.name;
+            select.appendChild(option);
+        });
+    }
+
+    async function loadManufacturers() {
+        const select = document.getElementById("manufacturer");
+        const res = await fetch("/api/manufacturers/");
+        const data = await res.json();
+        data.manufacturers.forEach(manufacturer => {
+            const option = document.createElement("option");
+            option.value = manufacturer.id;
+            option.textContent = manufacturer.name;
+            select.appendChild(option);
+        });
+    }
+
+    async function loadProduct(productId) {
+        const res = await fetch(`/api/products/${productId}/`);
+        if (!res.ok) throw new Error("Erro ao carregar produto");
+
+        const product = await res.json();
+
+        document.getElementById("name").value = product.name;
+        document.getElementById("weight").value = product.weight;
+        document.getElementById("unit_type").value = product.unit_type;
+
+        const [size1, size2] = product.size.split("x");
+        document.getElementById("size1").value = size1;
+        document.getElementById("size2").value = size2;
+
+        document.getElementById("quantity_per_pack").value = product.quantity_per_package;
+        document.getElementById("observations").value = product.observations;
+
+        // ✅ Aqui está a correção — usa os campos *_id
+        if (product.manufacturer_id) {
+            document.getElementById("manufacturer").value = product.manufacturer_id;
+        }
+
+        if (product.category_id) {
+            document.getElementById("category").value = product.category_id;
+        }
+    }
+</script>
+
+
+
+
+<script>
+    document.getElementById("product-form").addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const productId = "{{ product.id }}";
+
+        const name = document.getElementById("name").value;
+        const weight = document.getElementById("weight").value;
+        const unitType = document.getElementById("unit_type").value;
+        const size1 = document.getElementById("size1").value;
+        const size2 = document.getElementById("size2").value;
+        const quantityPerPack = document.getElementById("quantity_per_pack").value;
+        const observations = document.getElementById("observations").value;
+        const manufacturer = document.getElementById("manufacturer").value;
+        const category = document.getElementById("category").value;
+
+        const size = `${size1}x${size2}`;
+
+        const payload = {
+            name,
+            weight,
+            unit_type: unitType,
+            size,
+            quantity_per_package: quantityPerPack,
+            observations,
+            manufacturer,
+            category
+        };
+
+        try {
+            const response = await fetch(`/api/products/${productId}/update/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(data.message);
+                window.location.href = "/products/"; // Redireciona após sucesso
+            } else {
+                const errorData = await response.json();
+                alert("Erro ao atualizar produto: " + errorData.error);
+            }
+        } catch (error) {
+            console.error("Erro ao enviar o formulário:", error);
+            alert("Ocorreu um erro ao enviar o formulário.");
+        }
+    });
+
+    // Função para capturar o CSRF Token
+    function getCSRFToken() {
+        const name = "csrftoken";
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + "=")) {
+                return cookie.substring(name.length + 1);
+            }
+        }
+        return "";
+    }
+</script>
+
+
+{% endblock %}

@@ -17,6 +17,20 @@
                         </div>
                     </div>
                     <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Nome do Contato</label>
+                            <input class="form-control" type="text" name="contact_name" id="contact_name" value="{{ customer.contact_name|default_if_none:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Telefone</label>
+                            <input class="form-control" type="text" name="phone" id="phone" value="{{ customer.phone|default_if_none:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" type="email" name="email" id="email" value="{{ customer.email|default_if_none:'' }}">
+                        </div>
+                    </div>
+                    <div class="row">
                         <div class="mb-2 col-2">
                             <label class="form-label" for="cep">CEP</label>
                             <input class="form-control" name="cep" type="text" id="cep" maxlength="9" value="{{ customer.cep|default:'' }}" onblur="pesquisacep(this.value);" />
@@ -46,15 +60,15 @@
                     </div>
                     <div class="row">
                         <div class="mb-2 col">
-                            <label class="form-label">CPF ou CNPJ</label>
-                            <input class="form-control" name="cpf_or_cnpj" type="text" id="cpf_or_cnpj" value="{{ customer.cpf_or_cnpj|default:'' }}" />
-                        </div>
-                        <div class="mb-2 col">
                             <label class="form-label">É CNPJ?</label>
                             <select class="form-control" name="is_cnpj" id="is_cnpj">
                                 <option value="false" {% if not customer.is_cnpj|default:'' %}selected{% endif %}>Não</option>
                                 <option value="true" {% if customer.is_cnpj|default:'' %}selected{% endif %}>Sim</option>
                             </select>
+                        </div>
+                        <div class="mb-2 col">
+                            <label class="form-label">CPF ou CNPJ</label>
+                            <input class="form-control" name="cpf_or_cnpj" type="text" id="cpf_or_cnpj" value="{{ customer.cpf_or_cnpj|default:'' }}" />
                         </div>
                     </div>
                     <label class="form-label">Observações</label>
@@ -65,4 +79,39 @@
             </div>
         </div>
 </div>
+<script>
+    const cpfCnpjInput = document.getElementById('cpf_or_cnpj');
+    const isCnpjSelect = document.getElementById('is_cnpj');
+
+    function aplicarMascara(valor, isCnpj) {
+        valor = valor.replace(/\D/g, '');
+        if (isCnpj === 'true') {
+            // Máscara de CNPJ: 00.000.000/0000-00
+            return valor.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/,
+                '$1.$2.$3/$4-$5');
+        } else {
+            // Máscara de CPF: 000.000.000-00
+            return valor.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/,
+                '$1.$2.$3-$4');
+        }
+    }
+
+    function atualizarMascara() {
+        const isCnpj = isCnpjSelect.value;
+        cpfCnpjInput.value = aplicarMascara(cpfCnpjInput.value, isCnpj);
+    }
+
+    // Atualiza máscara ao mudar o select
+    isCnpjSelect.addEventListener('change', atualizarMascara);
+
+    // Aplica máscara enquanto digita
+    cpfCnpjInput.addEventListener('input', () => {
+        const isCnpj = isCnpjSelect.value;
+        cpfCnpjInput.value = aplicarMascara(cpfCnpjInput.value, isCnpj);
+    });
+
+    // Aplica máscara ao carregar, se já tiver valor
+    document.addEventListener('DOMContentLoaded', atualizarMascara);
+</script>
+
 {% endblock %}

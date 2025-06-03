@@ -10,10 +10,16 @@ from .models import (
     Purchase,
     PurchaseProduct,
     Boleto,
+    Manufacturer
 )
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("id","name")
+    ordering = ("id",)
+
+@admin.register(Manufacturer)
+class ManufacturerAdmin(admin.ModelAdmin):
     list_display = ("id","name")
     ordering = ("id",)
 
