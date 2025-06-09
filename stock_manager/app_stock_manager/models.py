@@ -132,9 +132,9 @@ class Sale(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True, related_name="sales")  # ALTERADO
     customer_name = models.CharField(max_length=255, blank=True, null=True)  
 
-    discount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True)
     full_price = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
+    # payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES, default='AV')
     observations = models.TextField(blank=True, null=True)
 
     is_quote = models.BooleanField(default=True)
@@ -164,7 +164,22 @@ class SaleProduct(models.Model):
     def __str__(self):
         return f"{self.product_info or 'Produto Removido'} - {self.quantity}"
 
+class SalePayment(models.Model):
+    PAYMENT_TYPES = [
+        ('DH', 'Dinheiro'),
+        ('PX', 'PIX'),
+        ('DB', 'Débito'),
+        ('CR', 'Crédito'),
+        ('BO', 'Boleto'),
+    ]
 
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="payments")
+    payment_type = models.CharField(max_length=2, choices=PAYMENT_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    credit_installments = models.IntegerField(default=1, null=True, blank=True)  # Apenas para crédito
+
+    def __str__(self):
+        return f"{self.get_payment_type_display()} - R$ {self.amount:.2f}"
 
 class Boleto(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="boletos")
@@ -212,6 +227,9 @@ class PurchaseProduct(models.Model):
 
     def __str__(self):
         return f"{self.product_info or 'Produto Removido'} - {self.quantity}"
+
+
+
 
     
 from .signals import *

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
-from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProduct, Purchase, PurchaseProduct, Boleto, Manufacturer
+from .models import Customer, Product, Stock, Supplier, Category, Sale, SaleProduct, SalePayment, Purchase, PurchaseProduct, Boleto, Manufacturer
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import json
@@ -9,7 +9,8 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import Sum, Count, Min
 from datetime import datetime
-from django.utils.timezone import now, timedelta
+from django.utils.timezone import now, timedelta, make_aware, localtime, is_naive, get_current_timezone
+from datetime import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login
@@ -157,6 +158,12 @@ def delete_manufacturer(request, manufacturer_id):
     return redirect("view_manufactures")  # Redireciona para a lista de clientes
 
 @login_required
+def delete_category(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    category.delete()
+    return redirect("view_categorys") 
+
+@login_required
 def view_suppliers(request):
     return render(request, 'pages/list_suppliers.html')
 
@@ -239,6 +246,13 @@ def view_manufactures(request):
 def new_manufacturer(request):
     return render(request, 'pages/new_manufacturer.html')
 
+@login_required
+def view_categorys(request):
+    return render(request, 'pages/list_category.html')
+
+@login_required
+def new_category(request):
+    return render(request, 'pages/new_category.html')
 
 # ======================= FUNCIONS ============================================
 def user_logout(request):
@@ -261,7 +275,7 @@ def add_category(request):
         except Exception as e:
             return JsonResponse({"error": f"Erro ao salvar categoria: {str(e)}"}, status=500)
     else:
-        return redirect('home')
+        return redirect('view_categorys')
 
 @login_required
 def add_customer(request):
@@ -435,113 +449,141 @@ def update_product(request, product_id):
 
     return JsonResponse({"error": "Método não permitido"}, status=405)
 
+
 @csrf_exempt
 @login_required
 def add_sale(request):
-    if request.method == "POST":
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        customer_id = data.get("customer")
+
+        # Validação explícita do cliente
+        if not customer_id:
+            return JsonResponse({"success": False, "error": "Selecione um Cliente"}, status=400)
+
         try:
-            # Verificar se o usuário está autenticado (para APIs que não usam sessões, pode ser via token)
-            if not request.user.is_authenticated:
-                return JsonResponse({"success": False, "error": "Usuário não autenticado"}, status=401)
+            customer_id_int = int(customer_id)
+        except (ValueError, TypeError):
+            return JsonResponse({"success": False, "error": "Selecione um Cliente válido"}, status=400)
 
-            # Carregar os dados do corpo da requisição
-            data = json.loads(request.body)
-            customer_id = data.get("customer")
-            is_quote = data.get("is_quote", False)  # ✅ Agora captura corretamente
-            print(f"Valor de is_quote: {is_quote}")  # Debug para conferir o valor
+        customer = get_object_or_404(Customer, id=customer_id_int)
 
+        # restante do seu código abaixo, sem alterações
+        # ...
+        # (copie seu código original daqui em diante)
 
-            # Valida se o cliente existe
-            customer = get_object_or_404(Customer, id=customer_id)
+        # Desconto deve ser um número inteiro entre 0 e 100
+        try:
+            discount_percentage = int(data.get("discount", 0))
+            if discount_percentage < 0:
+                discount_percentage = 0
+            elif discount_percentage > 100:
+                discount_percentage = 100
+        except (ValueError, TypeError):
+            discount_percentage = 0
 
-            # Inicializa variáveis
-            sale_name = data.get("name", "")
-            observations = data.get("observations", "")
-            payment_type = data.get("payment_type", "")
-            nfe = data.get("nfe", "")  # Novo campo NFE
-            products = data.get("products", [])
+        # Criação da venda
+        sale = Sale.objects.create(
+            user=request.user,
+            name=data.get("name"),
+            nfe=data.get("nfe", ""),
+            customer=customer,
+            observations=data.get("observations", ""),
+            discount=discount_percentage,
+            full_price=0,
+            is_quote=data.get("is_quote", False),
+        )
 
-            # Calcula o preço total
-            total_price = Decimal(0.00)  # Inicializa como Decimal
-            for product_data in products:
-                product = get_object_or_404(Product, id=product_data["id"])
+        product_total = Decimal(0.00)
 
-                # Verifica se o produto tem estoque e pega o preço
-                stock = product.stocks.first()
-                if not stock:
-                    return JsonResponse({"success": False, "error": f"Produto {product.name} sem estoque."}, status=400)
-                
-                custom_price = Decimal(product_data.get("price", stock.price))  # Usa o preço enviado, se houver
-                quantity = Decimal(product_data["quantity"])  # Converte para Decimal
-                total_price += custom_price * quantity
+        # Processa produtos
+        for item in data.get("products", []):
+            product = get_object_or_404(Product, id=item["id"])
+            quantity = Decimal(item["quantity"])
+            price = Decimal(item["price"])
 
-            # Verifica se campos obrigatórios estão presentes
-            required_fields = ["name", "customer", "payment_type", "products"]
-            missing_fields = [field for field in required_fields if field not in data or not data[field]]
-
-            if missing_fields:
-                return JsonResponse(
-                    {"success": False, "error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"},
-                    status=400,
-                )
-
-            # Criação da venda
-            sale = Sale.objects.create(
-                user=request.user,  # Associa o usuário logado à venda
-                name=sale_name,
-                customer=customer,
-                observations=observations,
-                nfe=nfe,
-                payment_type=payment_type,
-                full_price=total_price,  # Salva o preço total como Decimal
-                is_quote=is_quote,  # Define se é orçamento ou venda
+            SaleProduct.objects.create(
+                sale=sale,
+                product=product,
+                quantity=quantity,
+                price=price
             )
 
-            
+            subtotal = price * quantity
+            product_total += subtotal
 
+            if not sale.is_quote:
+                stock = Stock.objects.filter(product=product).first()
+                if stock:
+                    stock.quantity -= quantity
+                    stock.save()
 
-            # Adicionar produtos à venda
-            for product_data in products:
-                product = get_object_or_404(Product, id=product_data["id"])
-                stock = product.stocks.first()
-                if not stock:
-                    continue  # Se o produto não tem estoque, não adiciona
+        total_payment_before_discount = Decimal(0.00)
 
-                stock_price = Decimal(stock.price)  # Converte para Decimal
-                quantity = Decimal(product_data["quantity"])  # Converte para Decimal
+        # Processa pagamentos
+        for payment in data.get("payments", []):
+            payment_type = payment.get("payment_type")
 
-                SaleProduct.objects.create(
+            if payment_type != "BO":
+                if payment_type == "CR":
+                    installments = int(payment.get("credit_installments", 1))
+                    per_installment = Decimal(payment.get("amount", 0))
+                    amount = per_installment * installments
+                else:
+                    amount = Decimal(payment.get("amount", 0))
+
+                SalePayment.objects.create(
                     sale=sale,
-                    product=product,
-                    quantity=quantity,
-                    price=custom_price,  # Usa o preço enviado pelo usuário
+                    payment_type=payment_type,
+                    amount=amount,
+                    credit_installments=int(payment.get("credit_installments")) if payment_type == "CR" else None
                 )
 
-                # 🔥 ESTOQUE NÃO ALTERA SE FOR ORÇAMENTO!
-                if not is_quote:
-                    print(f"🔴 Atualizando estoque para {product.name} - Removendo {quantity}")
-                    stock.quantity -= quantity
-                    stock.save(update_fields=["quantity"])
-                else:
-                    print(f"🟢 Estoque NÃO alterado para {product.name} (Orçamento)")
+                total_payment_before_discount += amount
 
-            # Adicionar boletos (se aplicável)
-            if payment_type == "BO":
-                print("Boleto")
-                installments = data.get("installments", [])
-                for installment in installments:
-                    installment_value = Decimal(installment["value"])  # Converte para Decimal
+            else:
+                boletos = payment.get("boletos", [])
+                for b in boletos:
+                    value = Decimal(b["value"])
+                    due_date = b["due_date"]
+
                     Boleto.objects.create(
                         sale=sale,
-                        value=installment_value,
-                        due_date=installment["due_date"],
-                        status="Pendente",
+                        value=value,
+                        due_date=due_date,
+                        status="Pendente"
                     )
+                    total_payment_before_discount += value
 
-            return JsonResponse({"success": True, "sale_id": sale.id})
-        except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)}, status=400)
-    return JsonResponse({"success": False, "error": "Método não permitido"}, status=405)
+        discount_value = (total_payment_before_discount * Decimal(discount_percentage)) / Decimal(100)
+        discounted_total = total_payment_before_discount - discount_value
+
+        sale.full_price = discounted_total
+        sale.save()
+
+        warning = None
+        if product_total != discounted_total:
+            warning = (
+                f"Atenção: o valor total dos produtos é R$ {product_total:.2f}, "
+                f"mas o valor final da venda (após desconto de {discount_percentage}%) é R$ {discounted_total:.2f}."
+            )
+
+        return JsonResponse({
+            "success": True,
+            "sale_id": sale.id,
+            "product_total": float(product_total),
+            "discount_value": float(discount_value),
+            "discounted_total": float(discounted_total),
+            "payment_total": float(total_payment_before_discount),
+            "warning": warning
+        })
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 @csrf_exempt
 @login_required
@@ -596,47 +638,109 @@ def add_manufacturer(request):
             return JsonResponse({"error": f"Erro ao salvar fornecedor: {str(e)}"}, status=500)
     else:
         return redirect('home')
-    
+
+@login_required
+def add_category(request):
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+
+        if not name:
+            return JsonResponse({"error": "O campo 'Nome' é obrigatório."}, status=400)
+
+        try:
+            category = Category.objects.create(
+                name=name
+            )
+            return redirect('view_categorys')
+        except Exception as e:
+            return JsonResponse({"error": f"Erro ao salvar fornecedor: {str(e)}"}, status=500)
+    else:
+        return redirect('view_categorys')
+  
+@csrf_exempt
 @login_required
 def edit_quote(request, quote_id):
-    quote = get_object_or_404(Sale, id=quote_id, is_quote=True)
-    
-    boletos = list(
-        quote.boletos.values("due_date", "value")
-    )
-    
-    # ✅ Converte `due_date` para string e `value` para float antes de serializar
-    for boleto in boletos:
-        boleto["due_date"] = boleto["due_date"].strftime("%Y-%m-%d") if boleto["due_date"] else None
-        boleto["value"] = float(boleto["value"])  # ✅ Converte Decimal para float
+    sale = get_object_or_404(Sale, id=quote_id)
 
-    products = [
-        {
-            "id": sp.product.id if sp.product else None,
-            "name": sp.product.name if sp.product else sp.product_info,
-            "quantity": float(sp.quantity),  # ✅ Converte Decimal para float
-            "price": float(sp.price),  # ✅ Converte Decimal para float
-        }
-        for sp in quote.sale_products.all()
-    ]
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
 
-    # ✅ Adiciona os dados do orçamento ao contexto
-    quote_data = {
-        "name": quote.name,
-        "nfe": quote.nfe,
-        "payment_type": quote.payment_type,
-        "customer_id": quote.customer.id if quote.customer else None,
-        "observations": quote.observations if quote.observations else None,
-    }
+            customer_id = data.get("customer")
+            customer = get_object_or_404(Customer, id=customer_id)
 
-    context = {
-        "quote": quote,
-        "products": json.dumps(products),
-        "customers": Customer.objects.all(),
-        "boletos": json.dumps(boletos),  # ✅ Agora JSON-serializável
-        "quote_data": json.dumps(quote_data),  # ✅ Passa os dados do orçamento para o template
-    }
-    return render(request, "pages/edit_quote.html", context)
+            sale.name = data.get("name")
+            sale.nfe = data.get("nfe", "")
+            sale.customer = customer
+            sale.observations = data.get("observations", "")
+            sale.discount = Decimal(data.get("discount", 0))
+            sale.is_quote = data.get("is_quote", False)
+
+            # Limpa dados anteriores
+            sale.sale_products.all().delete()
+            sale.payments.all().delete()
+            sale.boletos.all().delete()
+
+            # 🔹 Produtos
+            for item in data.get("products", []):
+                product = get_object_or_404(Product, id=item["id"])
+                quantity = Decimal(item["quantity"])
+                price = Decimal(item["price"])
+                SaleProduct.objects.create(
+                    sale=sale,
+                    product=product,
+                    quantity=quantity,
+                    price=price
+                )
+
+            # 🔹 Pagamentos
+            gross_payment_total = Decimal(0)
+            for p in data.get("payments", []):
+                payment_type = p.get("payment_type")
+                amount = Decimal(p.get("amount")) if p.get("amount") else Decimal(0)
+                installments = int(p.get("credit_installments")) if p.get("credit_installments") else None
+
+                if payment_type != "BO":
+                    SalePayment.objects.create(
+                        sale=sale,
+                        payment_type=payment_type,
+                        amount=amount,
+                        credit_installments=installments
+                    )
+                    gross_payment_total += amount
+                else:
+                    for boleto in p.get("boletos", []):
+                        value = Decimal(boleto["value"])
+                        due_date = boleto["due_date"]
+                        Boleto.objects.create(
+                            sale=sale,
+                            value=value,
+                            due_date=due_date,
+                            status="Pendente"
+                        )
+                        gross_payment_total += value
+
+            # 🔹 Aplica desconto ao total dos pagamentos
+            discount_percentage = min(max(int(data.get("discount", 0)), 0), 100)
+            discount_value = (gross_payment_total * Decimal(discount_percentage)) / Decimal(100)
+            final_total = gross_payment_total - discount_value
+
+            sale.full_price = final_total
+            sale.save()
+
+            return JsonResponse({
+                "success": True,
+                "total_before_discount": float(gross_payment_total),
+                "discount_value": float(discount_value),
+                "final_total": float(final_total)
+            })
+
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    # Método GET - renderiza o formulário de edição
+    return render(request, "pages/edit_quote.html", {"quote": sale})
+
 
 @csrf_exempt
 @login_required
@@ -1375,6 +1479,15 @@ def get_all_manufacturers(request):
 
     return JsonResponse({'manufacturers': manufacturers_list})
 
+def get_all_categorys(request):
+    category = Category.objects.all()
+    category_list = [{
+        "id": category.id,
+        'name': category.name
+    } for category in category]
+
+    return JsonResponse({'category': category_list})
+
 def get_all_customers(request):
     query = request.GET.get("search", "").strip()
 
@@ -1475,15 +1588,20 @@ def get_all_products(request):
 
     return JsonResponse({'products': product_list})
 
+
 def api_products(request):
     query = request.GET.get('search', '')
 
     if query:
-        products = Product.objects.filter(name__icontains=query)
+        products = Product.objects.filter(
+            Q(name__icontains=query) |
+            Q(category__name__icontains=query) |
+            Q(manufacturer__name__icontains=query)
+        )
     else:
         products = Product.objects.all()
 
-    # Adicionando o menor preço do estoque relacionado
+    # Anotando com menor preço do estoque
     products_with_price = products.annotate(min_price=Min('stocks__price'))
 
     data = {
@@ -1491,15 +1609,18 @@ def api_products(request):
             {
                 "id": product.id,
                 "name": product.name,
+                "category": product.category.name if product.category else "",
+                "manufacturer": product.manufacturer.name if product.manufacturer else "",
                 "weight": product.weight,
                 "unit_type": product.unit_type,
                 "size": product.size,
                 "quantity_per_package": product.quantity_per_package,
-                "price": product.min_price if product.min_price is not None else 0  # Garantindo que o preço não seja nulo
+                "price": product.min_price if product.min_price is not None else 0
             }
             for product in products_with_price
         ]
     }
+
     return JsonResponse(data)
 
 def get_unit_types(request):
@@ -1578,14 +1699,13 @@ def fetch_stock_data():
 
 def get_all_sales(request):
     query = request.GET.get("search", "").strip()
-
     sales = Sale.objects.all()
 
     if query:
         sales = sales.filter(
-            Q(name__icontains=query) |  # Busca pelo nome da venda
-            Q(customer__name__icontains=query) |  # Busca pelo nome do cliente
-            Q(nfe__icontains=query)  # Busca pelo número do pedido
+            Q(name__icontains=query) |
+            Q(customer__name__icontains=query) |
+            Q(nfe__icontains=query)
         )
 
     sale_list = []
@@ -1593,23 +1713,117 @@ def get_all_sales(request):
     for sale in sales:
         sale_products = [
             {
-                "product_id": sale_product.product.id if sale_product.product else None,
-                "product_name": sale_product.product.name if sale_product.product else sale_product.product_info,
-                "quantity": float(sale_product.quantity),
-                "price": float(sale_product.price),
-                "total_price": float(sale_product.quantity * sale_product.price),
+                "product_id": sp.product.id if sp.product else None,
+                "product_name": sp.product.name if sp.product else sp.product_info,
+                "product_category": sp.product.category.name if sp.product and sp.product.category else "",
+                "product_manufaturer": sp.product.manufacturer.name if sp.product and sp.product.manufacturer else "",
+                "quantity": float(sp.quantity),
+                "price": float(sp.price),
+                "total_price": float(sp.quantity * sp.price),
             }
-            for sale_product in sale.sale_products.all()
+            for sp in sale.sale_products.all()
+        ]
+
+        payments = [
+            {
+                "payment_type": p.payment_type,
+                "payment_type_display": p.get_payment_type_display(),
+                "amount": float(p.amount),
+                "credit_installments": p.credit_installments,
+            }
+            for p in sale.payments.all()
+        ]
+
+        boletos = [
+            {
+                "value": float(b.value),
+                "due_date": b.due_date.strftime("%Y-%m-%d"),
+                "status": b.status,
+            }
+            for b in sale.boletos.all()
         ]
 
         sale_list.append({
             "sale_id": sale.id,
             "sale_name": sale.name,
-            "sale_created": sale.created,
+            "sale_created": sale.created.strftime("%Y-%m-%d %H:%M:%S"),
             "customer_name": sale.customer.name if sale.customer else sale.customer_name,
             "full_price": float(sale.full_price),
-            "products": sale_products,
+            "discount": float(sale.discount or 0),
+            "observations": sale.observations,
+            "is_quote": sale.is_quote,
             "nfe": sale.nfe,
+            "user_id": sale.user.id,
+            "user_name": sale.user.username,
+            "products": sale_products,
+            "payments": payments,
+            "boletos": boletos,
+        })
+
+    return JsonResponse({"sales": sale_list})
+
+def get_all_confirmed_sales(request):
+    query = request.GET.get("search", "").strip()
+    
+    sales = Sale.objects.filter(is_quote=False).order_by('-created')
+
+    if query:
+        sales = sales.filter(
+            Q(name__icontains=query) |
+            Q(customer__name__icontains=query) |
+            Q(nfe__icontains=query)
+        )
+
+    sale_list = []
+
+    for sale in sales:
+        sale_products = [
+            {
+                "product_id": sp.product.id if sp.product else None,
+                "product_name": sp.product.name if sp.product else sp.product_info,
+                "product_category": sp.product.category.name if sp.product and sp.product.category else "",
+                "product_manufaturer": sp.product.manufacturer.name if sp.product and sp.product.manufacturer else "",
+                "quantity": float(sp.quantity),
+                "price": float(sp.price),
+                "total_price": float(sp.quantity * sp.price),
+            }
+            for sp in sale.sale_products.all()
+        ]
+
+        payments = [
+            {
+                "payment_type": p.payment_type,
+                "payment_type_display": p.get_payment_type_display(),
+                "amount": float(p.amount),
+                "credit_installments": p.credit_installments,
+            }
+            for p in sale.payments.all()
+        ]
+
+        boletos = [
+            {
+                "value": float(b.value),
+                "due_date": b.due_date.strftime("%Y-%m-%d"),
+                "status": b.status,
+            }
+            for b in sale.boletos.all()
+        ]
+
+        sale_list.append({
+            "sale_id": sale.id,
+            "sale_name": sale.name,
+            "sale_created": sale.created.strftime("%Y-%m-%d %H:%M:%S"),
+            "customer_name": sale.customer.name if sale.customer else sale.customer_name,
+            "full_price": float(sale.full_price),
+            "discount": float(sale.discount or 0),
+            "observations": sale.observations,
+            "is_quote": sale.is_quote,
+            "nfe": sale.nfe,
+            "user_id": sale.user.id,
+            "user_name": sale.user.username,
+            "products": sale_products,
+            "payments": payments,
+            "boletos": boletos,
         })
 
     return JsonResponse({"sales": sale_list})
@@ -1617,7 +1831,7 @@ def get_all_sales(request):
 def get_all_purchases(request):
     query = request.GET.get("search", "").strip()
 
-    purchases = Purchase.objects.all()
+    purchases = Purchase.objects.all().order_by('-created')
 
     if query:
         purchases = purchases.filter(
@@ -1632,6 +1846,8 @@ def get_all_purchases(request):
             {
                 "product_id": purchase_product.product.id if purchase_product.product else None,
                 "product_name": purchase_product.product.name if purchase_product.product else purchase_product.product_info,
+                "product_category": purchase_product.product.category.name if purchase_product.product and purchase_product.product.category else "",
+                "product_manufaturer": purchase_product.product.manufacturer.name if purchase_product.product and purchase_product.product.manufacturer else "",
                 "quantity": float(purchase_product.quantity),
                 "price": float(purchase_product.price),
                 "total_price": float(purchase_product.quantity * purchase_product.price),
@@ -1650,20 +1866,34 @@ def get_all_purchases(request):
 
     return JsonResponse({"purchases": purchase_list})
 
+
+
 def get_summary(request):
-    today = now().date()
-    start_of_week = today - timedelta(days=today.weekday())
-    start_of_month = today.replace(day=1)
+    tz = get_current_timezone()
+    now_local = localtime()
+    today = now_local.date()
 
-    # Vendas confirmadas
-    daily_sales = Sale.objects.filter(created__date=today, is_quote=False)
-    daily_purchases = Purchase.objects.filter(created__date=today)
+    # Constrói os intervalos em horário local
+    start_of_day_local = datetime.combine(today, datetime.min.time()).replace(tzinfo=tz)
+    end_of_day_local = datetime.combine(today, datetime.max.time()).replace(tzinfo=tz)
 
-    weekly_sales = Sale.objects.filter(created__date__gte=start_of_week, is_quote=False)
-    weekly_purchases = Purchase.objects.filter(created__date__gte=start_of_week)
+    start_of_week_local = datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()).replace(tzinfo=tz)
+    start_of_month_local = datetime.combine(today.replace(day=1), datetime.min.time()).replace(tzinfo=tz)
 
-    monthly_sales = Sale.objects.filter(created__date__gte=start_of_month, is_quote=False)
-    monthly_purchases = Purchase.objects.filter(created__date__gte=start_of_month)
+    # Converte para UTC (já que o banco armazena timestamps em UTC)
+    start_of_day_utc = start_of_day_local.astimezone(timezone.utc)
+    end_of_day_utc = end_of_day_local.astimezone(timezone.utc)
+    start_of_week_utc = start_of_week_local.astimezone(timezone.utc)
+    start_of_month_utc = start_of_month_local.astimezone(timezone.utc)
+
+    # Filtra as vendas concretizadas (ignora orçamentos e com valor zero)
+    daily_sales = Sale.objects.filter(created__range=(start_of_day_utc, end_of_day_utc), is_quote=False, full_price__gt=0)
+    weekly_sales = Sale.objects.filter(created__gte=start_of_week_utc, is_quote=False, full_price__gt=0)
+    monthly_sales = Sale.objects.filter(created__gte=start_of_month_utc, is_quote=False, full_price__gt=0)
+
+    daily_purchases = Purchase.objects.filter(created__range=(start_of_day_utc, end_of_day_utc))
+    weekly_purchases = Purchase.objects.filter(created__gte=start_of_week_utc)
+    monthly_purchases = Purchase.objects.filter(created__gte=start_of_month_utc)
 
     def calculate_summary(sales, purchases):
         sales_products = SaleProduct.objects.filter(sale__in=sales)
@@ -1674,39 +1904,86 @@ def get_summary(request):
         products_sold = sales_products.aggregate(total=Sum('quantity'))['total'] or 0
         products_purchased = purchases_products.aggregate(total=Sum('quantity'))['total'] or 0
 
-        profit = sales_total - purchases_total  # LUCRO BRUTO
+        profit = sales_total - purchases_total
 
         return {
-            'sales_total': sales_total,
-            'purchases_total': purchases_total,
-            'products_sold': products_sold,
-            'products_purchased': products_purchased,
-            'profit': profit,
+            'sales_total': float(sales_total),
+            'purchases_total': float(purchases_total),
+            'products_sold': float(products_sold),
+            'products_purchased': float(products_purchased),
+            'profit': float(profit),
         }
 
-    data = {
+    return JsonResponse({
         'daily': calculate_summary(daily_sales, daily_purchases),
         'weekly': calculate_summary(weekly_sales, weekly_purchases),
         'monthly': calculate_summary(monthly_sales, monthly_purchases),
-    }
-
-    return JsonResponse(data)
-
+    })
 def get_latest_sales(request):
-    sales = Sale.objects.order_by('-created')[:10]
-    data = {
-        'sales': [
+    query = request.GET.get("search", "").strip()
+    
+    sales = Sale.objects.filter(is_quote=False).order_by('-created')[:10]
+
+    if query:
+        sales = sales.filter(
+            Q(name__icontains=query) |
+            Q(customer__name__icontains=query) |
+            Q(nfe__icontains=query)
+        )
+
+    sale_list = []
+
+    for sale in sales:
+        sale_products = [
             {
-                'sale_id': sale.id,
-                'sale_name': sale.name,
-                'customer_name': sale.customer.name if sale.customer else sale.customer_name,  # CORRIGIDO
-                'sale_created': sale.created,
-                'full_price': float(sale.full_price),
+                "product_id": sp.product.id if sp.product else None,
+                "product_name": sp.product.name if sp.product else sp.product_info,
+                "product_category": sp.product.category.name if sp.product and sp.product.category else "",
+                "product_manufaturer": sp.product.manufacturer.name if sp.product and sp.product.manufacturer else "",
+                "quantity": float(sp.quantity),
+                "price": float(sp.price),
+                "total_price": float(sp.quantity * sp.price),
             }
-            for sale in sales
+            for sp in sale.sale_products.all()
         ]
-    }
-    return JsonResponse(data)
+
+        payments = [
+            {
+                "payment_type": p.payment_type,
+                "payment_type_display": p.get_payment_type_display(),
+                "amount": float(p.amount),
+                "credit_installments": p.credit_installments,
+            }
+            for p in sale.payments.all()
+        ]
+
+        boletos = [
+            {
+                "value": float(b.value),
+                "due_date": b.due_date.strftime("%Y-%m-%d"),
+                "status": b.status,
+            }
+            for b in sale.boletos.all()
+        ]
+
+        sale_list.append({
+            "sale_id": sale.id,
+            "sale_name": sale.name,
+            "sale_created": sale.created.strftime("%Y-%m-%d %H:%M:%S"),
+            "customer_name": sale.customer.name if sale.customer else sale.customer_name,
+            "full_price": float(sale.full_price),
+            "discount": float(sale.discount or 0),
+            "observations": sale.observations,
+            "is_quote": sale.is_quote,
+            "nfe": sale.nfe,
+            "user_id": sale.user.id,
+            "user_name": sale.user.username,
+            "products": sale_products,
+            "payments": payments,
+            "boletos": boletos,
+        })
+
+    return JsonResponse({"sales": sale_list})
 
 def get_latest_purchases(request):
     purchases = Purchase.objects.order_by('-created')[:10]
@@ -1775,6 +2052,7 @@ def get_negative_stocks(request):
             'product_id': product.id,
             'product_name': product.name,
             'category': product.category.name if product.category else "Sem categoria",
+            'manufacturer': product.manufacturer.name if product.manufacturer else "Sem Fabricante",
             'quantity': float(stock.quantity),  # Convertendo para evitar problemas com JSON
             'price': float(stock.price),
             'pending': float(stock.pending),
@@ -1793,6 +2071,54 @@ def get_all_quotes(request):
     } for quote in quotes]
 
     return JsonResponse({"quotes": quote_list})
+
+@login_required
+def get_quote_data(request, quote_id):
+    try:
+        sale = Sale.objects.get(id=quote_id)
+        products = sale.sale_products.all()
+        payments = sale.payments.all()
+        boletos = sale.boletos.all()
+
+        return JsonResponse({
+            "success": True,
+            "quote": {
+                "id": sale.id,
+                "name": sale.name,
+                "nfe": sale.nfe,
+                "customer": sale.customer_id,
+                "observations": sale.observations,
+                "discount": int(sale.discount or 0),
+                "is_quote": sale.is_quote,
+                "products": [
+                    {
+                        "id": sp.product.id if sp.product else None,
+                        "name": sp.product.name if sp.product else sp.product_info,
+                        "quantity": float(sp.quantity),
+                        "price": float(sp.price),
+                    }
+                    for sp in products
+                ],
+                "payments": [
+                    {
+                        "payment_type": p.payment_type,
+                        "amount": float(p.amount),
+                        "credit_installments": p.credit_installments,
+                        "boletos": [
+                            {
+                                "value": float(b.value),
+                                "due_date": str(b.due_date)
+                            }
+                            for b in boletos if b.sale_id == sale.id
+                        ] if p.payment_type == "BO" else []
+                    }
+                    for p in payments
+                ]
+            }
+        })
+
+    except Sale.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Venda não encontrada."}, status=404)
 
 def get_product_prices(request, product_id):
     try:

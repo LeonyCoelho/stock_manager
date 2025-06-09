@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<script src="{% static 'js/get_address.js' %}"></script>
+
+<div class="container">
+    <div class="card mt-3">
+        <div class="card-header">Nova Venda</div>
+        <div class="card-body">
+            <form method="post" id="saleForm">
+                {% csrf_token %}
+                <div class="row">
+                    <!-- Nome da Venda -->
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Nome:</label>
+                        <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                    <div class="mb-2 col-2">
+                        <label class="form-label">Nº da Nota</label>
+                        <input class="form-control" name="nfe" type="text" id="nfe" required />
+                    </div>
+                    </div>
+                    
+                    <!-- Metodo de Pagamento -->
+                    <div class="mb-2 col-2">
+                        <div class="mb-3">
+                            <label for="paymentType" class="form-label">Tipo de Pagamento</label>
+                            <select class="form-select" id="paymentType" name="payment_type" required>
+                                <option value="DH">Dinheiro</option>
+                                <option value="PX">PIX</option>
+                                <option value="DB">Débito</option>
+                                <option value="CR">Crédito</option>
+                                <option value="BO">Boleto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="mb-2 col">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" name="customer" required>
+                            <option hidden selected disabled>Selecione</option>
+                            <!-- Os clientes devem renderizar aqui -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Boleto -->
+                <div id="boletoFields" style="display: none;">
+                    <label for="installments" class="form-label">Parcelas</label>
+                    <div id="installmentsContainer">
+                        <!-- As parcelas serão adicionadas dinamicamente aqui -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary mt-2" id="addInstallment">Adicionar Parcela</button>
+                </div>
+                
+
+                <!-- Campo de busca para produtos -->
+                <div class="mb-3">
+                    <label class="form-label">Buscar Produto</label>
+                    <input type="text" class="form-control" id="productSearch" placeholder="Digite o nome do produto" />
+                </div>
+
+                <!-- Lista de resultados da busca -->
+                 <div class="mb-3">
+                     <div id="product-table-container"> 
+                         <ul class="list-group" id="productResults"></ul>
+                     </div>
+                 </div>
+
+                <!-- Produtos adicionados -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5>Produtos Selecionados</h5>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Quantidade</th>
+                                        <th>Preço Unitário</th>
+                                        <th>Subtotal</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="selectedProducts">
+                                    <!-- Os produtos adicionados aparecerão aqui -->
+                                </tbody>
+                            </table>
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <label class="form-label">Observações</label>
+                <textarea class="form-control" name="observations" rows="4"></textarea>
+
+                <!-- Botão de enviar -->
+                <div class="form-check form-switch mt-3">
+                    <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" checked>
+                    <label class="form-check-label" for="is_quote">
+                        Salvar como orçamento
+                    </label>
+                </div>
+                
+                
+                
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                
+                
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ======= API PARA A PESQUISA DE PRODUTORS ======= -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const apiUrl = "/api/products/search/"; // URL da API de produtos
+    const productSearch = document.querySelector("#productSearch");
+    const productResults = document.querySelector("#productResults");
+    const selectedProducts = document.querySelector("#selectedProducts");
+
+    let products = []; // Cache dos produtos retornados pela API
+    let addedProducts = []; // Lista de produtos adicionados
+
+    // Função para buscar produtos pela API
+    async function fetchProducts(query) {
+        if (!query) {
+            productResults.innerHTML = "";
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiUrl}?search=${query}`);
+            const data = await response.json();
+            products = data.products || [];
+            renderProductResults();
+        } catch (error) {
+            console.error("Erro ao buscar produtos:", error);
+        }
+    }
+
+    // Função para renderizar resultados da busca
+    function renderProductResults() {
+        productResults.innerHTML = products
+            .map(
+                (product) => `  
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${product.name} - ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
+                    <button type="button" class="btn btn-sm btn-success" onclick="addProduct(${product.id})">Adicionar</button>
+                </li>
+            `
+            )
+            .join("");
+    }
+
+    // Função para adicionar produto à tabela
+    window.addProduct = function (productId) {
+        const product = products.find((p) => p.id === productId);
+        if (!product || addedProducts.find((p) => p.id === productId)) return;
+
+        addedProducts.push({ ...product, quantity: 1 });
+        renderSelectedProducts();
+    };
+
+    // Função para renderizar os produtos selecionados na tabela
+    function renderSelectedProducts() {
+        const selectedProductsContainer = document.querySelector("#selectedProducts");
+
+        if (!selectedProductsContainer) {
+            console.error("Elemento para exibição dos produtos selecionados não encontrado.");
+            return;
+        }
+
+        if (addedProducts.length === 0) {
+            selectedProductsContainer.innerHTML = `  
+                <tr>
+                    <td colspan="4" class="text-center">Nenhum produto adicionado.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        selectedProductsContainer.innerHTML = addedProducts
+            .map(
+                (product) => `
+            <tr>
+                <td>${product.name}</td>
+                <td>
+                    <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        value="${product.quantity}"
+                        min="1"
+                        onchange="updateQuantity(${product.id}, this.value)"
+                    />
+                </td>
+                <td>R$ ${Number(product.price).toFixed(2)}</td>
+                <td>
+                    <input
+                        type="number"
+                        class="form-control form-control-sm"
+                        value="${Number(product.price).toFixed(2)}"
+                        min="0"
+                        step="0.01"
+                        onchange="updatePrice(${product.id}, this.value)"
+                    />
+                </td>
+                <td>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-danger"
+                        onclick="removeProduct(${product.id})"
+                    >
+                        Remover
+                    </button>
+                </td>
+            </tr>
+        `
+            )
+            .join("");
+
+        // Calcula o total da compra
+        const total = addedProducts.reduce(
+            (sum, product) => sum + Number(product.price) * product.quantity,
+            0
+        );
+
+        // Adiciona a linha do total ao final da tabela
+        selectedProductsContainer.innerHTML += `  
+            <tr>
+                <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
+            </tr>
+        `;
+    }
+
+    // Função para atualizar quantidade de um produto
+    window.updateQuantity = function (productId, quantity) {
+        const product = addedProducts.find((p) => p.id === productId);
+        if (product && quantity > 0) {
+            product.quantity = parseInt(quantity, 10);
+            renderSelectedProducts();
+        }
+    };
+
+    // Função para remover um produto da tabela
+    window.removeProduct = function (productId) {
+        addedProducts = addedProducts.filter((p) => p.id !== productId);
+        renderSelectedProducts();
+    };
+
+    // Evento de busca ao digitar
+    productSearch.addEventListener("input", function () {
+        const query = this.value.trim();
+        fetchProducts(query);
+    });
+
+});
+</script>
+
+<!-- =========== PROCESSAMENTO DO FORMULARIO ========= -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/products/search/"; // URL da API de produtos
+        const productSearch = document.querySelector("#productSearch");
+        const productResults = document.querySelector("#productResults");
+        const selectedProducts = document.querySelector("#selectedProducts");
+        const saleForm = document.querySelector("#saleForm");
+        const paymentTypeSelect = document.querySelector("[name='payment_type']");
+        const boletoFields = document.querySelector("#boletoFields");
+        const installmentsContainer = document.querySelector("#installmentsContainer");
+        const addInstallmentButton = document.querySelector("#addInstallment");
+        const isQuote = document.querySelector("#is_quote").checked
+    
+        let products = []; // Cache dos produtos retornados pela API
+        let addedProducts = []; // Lista de produtos adicionados
+        let installments = []; // Lista de parcelas para boletos
+    
+        // Função para buscar produtos pela API
+        async function fetchProducts(query) {
+            if (!query) {
+                productResults.innerHTML = "";
+                return;
+            }
+    
+            try {
+                const response = await fetch(`${apiUrl}?search=${query}`);
+                const data = await response.json();
+                products = data.products || [];
+                renderProductResults();
+            } catch (error) {
+                console.error("Erro ao buscar produtos:", error);
+            }
+        }
+    
+        // Função para renderizar resultados da busca
+        function renderProductResults() {
+            productResults.innerHTML = products
+                .map(
+                    (product) => `  
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ${product.name} - ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
+                        <button type="button" class="btn btn-sm btn-success" onclick="addProduct(${product.id})">Adicionar</button>
+                    </li>
+                `
+                )
+                .join("");
+        }
+    
+        // Função para adicionar produto à tabela
+        window.addProduct = function (productId) {
+            const product = products.find((p) => p.id === productId);
+            if (!product || addedProducts.find((p) => p.id === productId)) return;
+    
+            addedProducts.push({ ...product, quantity: 1, price: product.price || 0 });
+            renderSelectedProducts();
+        };
+    
+        // Função para renderizar os produtos selecionados na tabela
+        function renderSelectedProducts() {
+            if (addedProducts.length === 0) {
+                selectedProducts.innerHTML = `<tr><td colspan="5" class="text-center">Nenhum produto adicionado.</td></tr>`;
+                return;
+            }
+    
+            selectedProducts.innerHTML = addedProducts
+                .map(
+                    (product) => `
+                    <tr>
+                        <td>${product.name}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" value="${product.quantity}" min="1" onchange="updateQuantity(${product.id}, this.value)" />
+                        </td>
+                        <td>
+                            <input
+                                type="number"
+                                class="form-control form-control-sm"
+                                value="${Number(product.price).toFixed(2)}"
+                                min="0"
+                                step="0.01"
+                                onchange="updatePrice(${product.id}, this.value)"
+                            />
+                        </td>
+                        <td>R$ ${(product.price * product.quantity).toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button>
+                        </td>
+                    </tr>
+                `
+                )
+                .join("");
+    
+            // Adiciona o total ao final
+            const total = addedProducts.reduce((sum, product) => sum + Number(product.price) * product.quantity, 0);
+            selectedProducts.innerHTML += `
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                    <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
+                </tr>
+            `;
+        }
+
+        // Função para atualizar o preço do produto
+        window.updatePrice = function (productId, newPrice) {
+            const product = addedProducts.find((p) => p.id === productId);
+            if (product && newPrice >= 0) {
+                product.price = parseFloat(newPrice);
+                renderSelectedProducts();
+            }
+        };
+    
+        // Função para atualizar quantidade de um produto
+        window.updateQuantity = function (productId, quantity) {
+            const product = addedProducts.find((p) => p.id === productId);
+            if (product && quantity > 0) {
+                product.quantity = parseInt(quantity, 10);
+                renderSelectedProducts();
+            }
+        };
+    
+        // Função para remover um produto da tabela
+        window.removeProduct = function (productId) {
+            addedProducts = addedProducts.filter((p) => p.id !== productId);
+            renderSelectedProducts();
+        };
+    
+        // Evento de busca ao digitar
+        productSearch.addEventListener("input", function () {
+            const query = this.value.trim();
+            fetchProducts(query);
+        });
+    
+        // Configuração para boletos
+        paymentTypeSelect.addEventListener("change", function () {
+            if (this.value === "BO") {
+                boletoFields.style.display = "block";
+            } else {
+                boletoFields.style.display = "none";
+                installments = []; // Limpa as parcelas se não for boleto
+                renderInstallments();
+            }
+        });
+    
+        addInstallmentButton.addEventListener("click", function () {
+            installments.push({ value: "", due_date: "" });
+            renderInstallments();
+        });
+    
+        function renderInstallments() {
+            installmentsContainer.innerHTML = installments
+                .map(
+                    (installment, index) => `
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <input type="number" class="form-control" placeholder="Valor" value="${installment.value}" onchange="updateInstallment(${index}, 'value', this.value)" />
+                        </div>
+                        <div class="col-6">
+                            <input type="date" class="form-control" value="${installment.due_date}" onchange="updateInstallment(${index}, 'due_date', this.value)" />
+                        </div>
+                    </div>
+                `
+                )
+                .join("");
+        }
+    
+        window.updateInstallment = function (index, field, value) {
+            installments[index][field] = value;
+        };
+    
+        saleForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            // 🔥 CAPTURA O VALOR DO CHECKBOX NO MOMENTO DO ENVIO
+            const isQuote = document.querySelector("#is_quote").checked;
+
+            console.log("DEBUG: Checkbox marcado?", isQuote); // 🔍 Verifica se está correto
+    
+            const name = document.querySelector("#name").value.trim();
+            const customer = document.querySelector("[name='customer']").value;
+            const paymentType = paymentTypeSelect.value;
+            const observations = document.querySelector("#observations")?.value.trim() || "";
+    
+            if (!addedProducts.length) {
+                return alert("Adicione ao menos um produto.");
+            }
+    
+            const saleData = {
+                name,
+                customer,
+                payment_type: paymentType,
+                observations,
+                is_quote: isQuote,  // 🔥 Agora envia corretamente o checkbox!
+                products: addedProducts.map(({ id, quantity, price }) => ({
+                    id,
+                    quantity,
+                    price,
+                })),                
+            };
+    
+            if (paymentType === "BO") {
+                saleData.installments = installments.filter(({ value, due_date }) => value && due_date);
+                if (!saleData.installments.length) {
+                    return alert("Adicione pelo menos uma parcela válida.");
+                }
+            }
+    
+            try {
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+                const response = await fetch("/add-sale/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(saleData),
+                });
+    
+                const result = await response.json();
+                if (result.success) {
+                    alert("Venda registrada com sucesso!");
+                    location.reload();
+                } else {
+                    alert(`Erro: ${result.error || result.message}`);
+                }
+            } catch (error) {
+                console.error("Erro ao enviar a venda:", error);
+                alert("Erro ao registrar a venda.");
+            }
+        });
+    });
+    </script>
+    
+    
+
+<!-- ====== API BUSCAR CLIENTES ======= -->
+<script aria-disabled="true">
+document.addEventListener("DOMContentLoaded", function () {
+    const customerApiUrl = "/api/customers/"; // URL da API de clientes
+    const customerSelect = document.querySelector("[name='customer']");
+
+    // Função para buscar clientes pela API
+    async function fetchCustomers() {
+        try {
+            const response = await fetch(customerApiUrl);
+            const data = await response.json();
+            const customers = data.customers || [];
+            renderCustomerOptions(customers);
+        } catch (error) {
+            console.error("Erro ao buscar clientes:", error);
+        }
+    }
+
+    // Função para renderizar as opções de clientes
+    function renderCustomerOptions(customers) {
+        customerSelect.innerHTML = `
+            <option hidden selected disabled>Selecione</option>
+        `; // Reseta as opções existentes
+
+        customers.forEach((customer) => {
+            const option = document.createElement("option");
+            option.value = customer.id;
+            option.textContent = `${customer.name} (${customer.cpf_or_cnpj}) ${customer.has_overdue_boleto ? '<span class="badge bg-danger ms-2">Boletos vencidos</span>' : ''}`;
+            customerSelect.appendChild(option);
+        });
+    }
+
+    // Chamar a função para buscar clientes ao carregar a página
+    fetchCustomers();
+});
+</script>
+
+<!-- ====== MULTIPLOS BOLETOS ====== -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+    const paymentTypeSelect = document.getElementById("paymentType");
+    const boletoSection = document.getElementById("boletoSection");
+    const boletoFields = document.getElementById("boletoFields");
+    const addBoletoButton = document.getElementById("addBoleto");
+
+    // Mostra/oculta a seção de boletos com base no tipo de pagamento
+    paymentTypeSelect.addEventListener("change", function () {
+        if (this.value === "BO") {
+            boletoSection.style.display = "block";
+        } else {
+            boletoSection.style.display = "none";
+            boletoFields.innerHTML = ""; // Remove boletos existentes
+        }
+    });
+
+    // Adiciona campos para boletos
+    addBoletoButton.addEventListener("click", function () {
+        const boletoField = `
+            <div class="row mb-2 boleto-entry">
+                <div class="col-md-6">
+                    <label class="form-label">Data de Vencimento</label>
+                    <input type="date" class="form-control" name="boleto_due_date[]" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Valor</label>
+                    <input type="number" class="form-control" name="boleto_amount[]" step="0.01" required>
+                </div>
+            </div>
+        `;
+        boletoFields.insertAdjacentHTML("beforeend", boletoField);
+    });
+});
+</script>
+
+{% endblock %}

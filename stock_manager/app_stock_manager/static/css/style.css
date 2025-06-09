@@ -15,3 +15,28 @@ body{
   padding: 0;        /* Remove padding extra */
   margin: 0;         /* Remove margem extra */
 }
+
+.quote-list-container {
+  height: 350px; /* Define altura máxima */
+  overflow-y: auto;  /* Ativa a rolagem vertical */
+  padding: 0;        /* Remove padding extra */
+  margin: 0;         /* Remove margem extra */
+}
+
+.negative-list-container {
+  height: 350px; /* Define altura máxima */
+  overflow-y: auto;  /* Ativa a rolagem vertical */
+  padding: 0;        /* Remove padding extra */
+  margin: 0;         /* Remove margem extra */
+}
+
+.product-list-container {
+  max-height: 337px; /* Define altura máxima */
+  overflow-y: auto;  /* Ativa a rolagem vertical */
+  padding: 0;        /* Remove padding extra */
+  margin: 0;         /* Remove margem extra */
+}
+
+option.overdue {
+    color: red;
+  }

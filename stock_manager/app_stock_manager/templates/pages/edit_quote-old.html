@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="card mt-3">
+        <div class="card-header">Editar Venda</div>
+        <div class="card-body">
+            <form method="post" id="saleForm">
+                {% csrf_token %}
+                <div class="row">
+                    <!-- Nome da Venda -->
+                    <div class="mb-2 col-4">
+                        <label class="form-label">Nome:</label>
+                        <input class="form-control" name="name" type="text" id="name" required />
+                    </div>
+                    
+                    <div class="mb-2 col-2">
+                        <label class="form-label">Nº do pedido</label>
+                        <input class="form-control" name="nfe" type="text" id="nfe" required />
+                    </div>
+                    
+                    <!-- Metodo de Pagamento -->
+                    <div class="mb-2 col-2">
+                        <div class="mb-3">
+                            <label for="paymentType" class="form-label">Tipo de Pagamento</label>
+                            <select class="form-select" id="paymentType" name="payment_type" required>
+                                <option value="AV" {% if quote.payment_type == "AV" %}selected{% endif %}>À Vista</option>
+                                <option value="CR" {% if quote.payment_type == "CR" %}selected{% endif %}>Crédito</option>
+                                <option value="BO" {% if quote.payment_type == "BO" %}selected{% endif %}>Boleto</option>
+                            </select>                            
+                        </div>
+                    </div>
+
+                    <!-- Cliente -->
+                    <div class="mb-2 col">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" name="customer" id="customerSelect" required>
+                            <option hidden selected disabled>Selecione</option>
+                            <!-- Os clientes serão renderizados aqui -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Boleto -->
+                <div id="boletoSection" style="display: none;">
+                    <label class="form-label">Parcelas</label>
+                    <div id="boletoFields">
+                        <!-- Os boletos existentes serão inseridos aqui -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary mt-2" id="addBoleto">Adicionar Parcela</button>
+                </div>
+                
+                
+
+
+                <!-- Campo de busca para produtos -->
+                <div class="mb-3">
+                    <label class="form-label">Buscar Produto</label>
+                    <input type="text" class="form-control" id="productSearch" placeholder="Digite o nome do produto" />
+                </div>
+
+                <!-- Lista de resultados da busca -->
+                 <div class="mb-3">
+                     <div id="product-table-container"> 
+                         <ul class="list-group" id="productResults"></ul>
+                     </div>
+                 </div>
+
+                <!-- Produtos adicionados -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5>Produtos Selecionados</h5>
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Quantidade</th>
+                                        <th>Preço Unitário</th>
+                                        <th>Subtotal</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="selectedProducts">
+                                    <!-- Os produtos adicionados aparecerão aqui -->
+                                </tbody>
+                            </table>
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <label class="form-label">Observações</label>
+                <textarea class="form-control" id="observations" name="observations" rows="4"></textarea>
+
+                <!-- Botão de enviar -->
+                <div class="form-check form-switch" hidden>
+                    <input class="form-check-input" type="checkbox" id="is_quote" name="is_quote" {% if quote.is_quote %}checked{% endif %}>
+                    <label class="form-check-label" for="is_quote">
+                        Salvar como orçamento
+                    </label>
+                  </div>
+
+                
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ======= API PARA A PESQUISA DE PRODUTORS ======= -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const apiUrl = "/api/products/search/";
+        const productSearch = document.querySelector("#productSearch");
+        const productResults = document.querySelector("#productResults");
+        const selectedProductsContainer = document.querySelector("#selectedProducts");
+        const totalPriceElement = document.createElement("tr"); // Linha do total geral
+        let products = {{ products|safe }}; // Produtos já carregados no orçamento
+        let addedProducts = [...products]; // Copia os produtos carregados inicialmente
+    
+        // Atualiza os valores na tabela sempre que algo mudar
+        function updateTotals() {
+            let total = 0;
+            addedProducts.forEach(product => {
+                product.subtotal = product.quantity * product.price;
+                total += product.subtotal;
+            });
+    
+            // Atualiza a tabela com os produtos e seus subtotais
+            renderSelectedProducts();
+    
+            // Atualiza o valor total geral
+            totalPriceElement.innerHTML = `
+                <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                <td colspan="2"><strong>R$ ${total.toFixed(2)}</strong></td>
+            `;
+            selectedProductsContainer.appendChild(totalPriceElement);
+        }
+    
+        // Renderiza a lista de produtos adicionados
+            function renderSelectedProducts() {
+                selectedProducts.innerHTML = addedProducts.map(product => `
+                    <tr data-product-id="${product.id}">
+                        <td>${product.name}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="quantity" value="${product.quantity}" min="1"
+                                onchange="updateQuantity(${product.id}, this.value)" />
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" name="price" value="${product.price}" min="0"
+                                step="0.01" onchange="updatePrice(${product.id}, this.value)" />
+                        </td>
+                        <td>R$ ${product.subtotal.toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="removeProduct(${product.id})">Remover</button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
+
+    
+        // Atualiza a quantidade do produto
+        window.updateQuantity = function (productId, newQuantity) {
+            const product = addedProducts.find(p => p.id === productId);
+            if (product && newQuantity > 0) {
+                product.quantity = parseFloat(newQuantity);
+                updateTotals();
+            }
+        };
+    
+        // Atualiza o preço do produto
+        window.updatePrice = function (productId, newPrice) {
+            const product = addedProducts.find(p => p.id === productId);
+            if (product && newPrice >= 0) {
+                product.price = parseFloat(newPrice);
+                updateTotals();
+            }
+        };
+    
+        // Remove um produto da lista
+        window.removeProduct = function (productId) {
+            addedProducts = addedProducts.filter(p => p.id !== productId);
+            updateTotals();
+        };
+    
+        // Adiciona um novo produto à lista
+        window.addProduct = function (productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || addedProducts.some(p => p.id === productId)) return;
+    
+            addedProducts.push({ ...product, quantity: 1, price: product.price || 0, subtotal: product.price || 0 });
+            updateTotals();
+        };
+    
+        // Busca produtos via API
+        async function fetchProducts(query) {
+            if (!query) {
+                productResults.innerHTML = "";
+                return;
+            }
+            try {
+                const response = await fetch(`${apiUrl}?search=${query}`);
+                const data = await response.json();
+                products = data.products || [];
+                renderProductResults();
+            } catch (error) {
+                console.error("Erro ao buscar produtos:", error);
+            }
+        }
+    
+        // Renderiza os resultados da busca
+        function renderProductResults() {
+            productResults.innerHTML = products.map(product => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${product.name} - ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
+                    <button type="button" class="btn btn-sm btn-success" onclick="addProduct(${product.id})">Adicionar</button>
+                </li>
+            `).join("");
+        }
+    
+        // Evento de busca ao digitar
+        productSearch.addEventListener("input", function () {
+            fetchProducts(this.value.trim());
+        });
+    
+        // Renderiza os produtos carregados inicialmente
+        updateTotals();
+    });
+</script>
+<!-- ====== API BUSCAR CLIENTES ======= -->
+<script aria-disabled="true">
+    document.addEventListener("DOMContentLoaded", function () {
+        const customerApiUrl = "/api/customers/"; // URL da API de clientes
+        const customerSelect = document.querySelector("[name='customer']");
+
+        // Função para buscar clientes pela API
+        async function fetchCustomers() {
+            try {
+                const response = await fetch(customerApiUrl);
+                const data = await response.json();
+                const customers = data.customers || [];
+                renderCustomerOptions(customers);
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+
+        // Função para renderizar as opções de clientes
+        function renderCustomerOptions(customers) {
+            customerSelect.innerHTML = `
+                <option hidden selected disabled>Selecione</option>
+            `; // Reseta as opções existentes
+
+            customers.forEach((customer) => {
+                const option = document.createElement("option");
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+                customerSelect.appendChild(option);
+            });
+        }
+
+        // Chamar a função para buscar clientes ao carregar a página
+        fetchCustomers();
+    });
+</script>
+<!-- ====== MULTIPLOS BOLETOS ====== -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const paymentTypeSelect = document.getElementById("paymentType");
+        const boletoSection = document.getElementById("boletoSection");
+        const boletoFields = document.getElementById("boletoFields");
+        const addBoletoButton = document.getElementById("addBoleto");
+
+        let savedBoletos = {{ boletos|safe }};  // Garante que os boletos sejam carregados via Django
+
+        if (!paymentTypeSelect || !boletoSection || !boletoFields || !addBoletoButton) {
+            console.error("Erro: Um ou mais elementos do boleto não foram encontrados.");
+            return;
+        }
+
+        // 🔹 Renderiza os boletos já existentes na página
+        function renderBoletos() {
+            boletoFields.innerHTML = ""; // Limpa antes de renderizar
+
+            savedBoletos.forEach((boleto, index) => {
+                addBoletoField(boleto.due_date, boleto.value, index);
+            });
+
+            if (savedBoletos.length > 0) {
+                boletoSection.style.display = "block";
+                boletoFields.style.display = "block";
+            }
+        }
+
+        // 🔹 Adiciona um novo boleto ao DOM e à lista de boletos
+        function addBoletoField(dueDate = "", value = "", index = null) {
+            const boletoIndex = index !== null ? index : savedBoletos.length;
+            const boletoField = `
+                <div class="row mb-2 boleto-entry" id="boleto-${boletoIndex}" data-index="${boletoIndex}">
+                    <div class="col-md-5">
+                        <label class="form-label">Data de Vencimento</label>
+                        <input type="date" class="form-control" name="boleto_due_date[]" value="${dueDate}" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">Valor</label>
+                        <input type="number" class="form-control" name="boleto_amount[]" value="${value}" step="0.01" required>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-boleto" data-index="${boletoIndex}">
+                            Remover
+                        </button>
+                    </div>
+                </div>
+            `;
+            boletoFields.insertAdjacentHTML("beforeend", boletoField);
+        }
+
+        // 🔹 Remove um boleto pelo índice correto
+        window.removeBoleto = function (index) {
+            savedBoletos = savedBoletos.filter((_, i) => i !== index); // Remove do array
+            renderBoletos(); // Atualiza a exibição
+        };
+
+        // 🔹 Adiciona evento aos botões de remoção quando os boletos forem renderizados
+        document.addEventListener("click", function (event) {
+            if (event.target.classList.contains("remove-boleto")) {
+                const index = parseInt(event.target.getAttribute("data-index"), 10);
+                removeBoleto(index);
+            }
+        });
+
+        // 🔹 Mostra ou oculta a seção de boletos dependendo da forma de pagamento
+        paymentTypeSelect.addEventListener("change", function () {
+            if (this.value === "BO") {
+                boletoSection.style.display = "block";
+            } else {
+                boletoSection.style.display = "none";
+                boletoFields.innerHTML = ""; // Remove boletos existentes ao trocar de pagamento
+            }
+        });
+
+        // 🔹 Adiciona um novo boleto ao clicar no botão
+        addBoletoButton.addEventListener("click", function () {
+            savedBoletos.push({ due_date: "", value: "" }); // Adiciona novo boleto ao array
+            renderBoletos();
+        });
+
+        // 🔥 Renderiza boletos existentes ao carregar a página
+        renderBoletos();
+    });
+
+    
+    
+</script>
+<!-- ====== DEMAIS CAMPOS ====== -->
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const nameField = document.getElementById("name");
+        const nfeField = document.getElementById("nfe");
+        const observationsField = document.getElementById("observations");
+        const paymentTypeField = document.getElementById("paymentType");
+        const customerSelect = document.querySelector("[name='customer']");
+    
+        // ❗️ Pega os dados do orçamento passados pelo Django
+        const quoteData = JSON.parse("{{ quote_data|escapejs }}");
+    
+        // ✅ Preenche os campos do formulário com os dados do orçamento
+        function populateFields() {
+            if (quoteData) {
+                nameField.value = quoteData.name || "";
+                observationsField.value = quoteData.observations || "";
+                nfeField.value = quoteData.nfe || "";
+                paymentTypeField.value = quoteData.payment_type || "";
+    
+                // ✅ Aguarda os clientes serem carregados antes de selecionar
+                fetchCustomers().then(() => {
+                    if (quoteData.customer_id) {
+                        customerSelect.value = quoteData.customer_id;
+                    }
+                });
+            }
+        }
+    
+        // ✅ Busca os clientes da API e mantém apenas um select
+        async function fetchCustomers() {
+            try {
+                const response = await fetch("/api/customers/");
+                const data = await response.json();
+                const customers = data.customers || [];
+                renderCustomerOptions(customers);
+            } catch (error) {
+                console.error("Erro ao buscar clientes:", error);
+            }
+        }
+    
+        // ✅ Renderiza a lista de clientes sem duplicação
+        function renderCustomerOptions(customers) {
+            customerSelect.innerHTML = `<option hidden selected disabled>Selecione</option>`;
+    
+            customers.forEach((customer) => {
+                const isSelected = quoteData.customer_id === customer.id;
+                const option = document.createElement("option");
+                option.value = customer.id;
+                option.textContent = `${customer.name} (${customer.cpf_or_cnpj})`;
+                if (isSelected) option.selected = true;
+                customerSelect.appendChild(option);
+            });
+        }
+    
+        // ✅ Inicializa os dados da página
+        populateFields();
+    });
+    
+</script>
+<!-- ====== PROCESSAMENTO DO FORMULARIO ====== -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const saleForm = document.getElementById("saleForm");
+        const paymentTypeSelect = document.getElementById("paymentType");
+        const boletoFields = document.getElementById("boletoFields");
+        const selectedProducts = document.getElementById("selectedProducts");
+        const isQuoteCheckbox = document.getElementById("is_quote");
+    
+        //let products = {{ products|safe }};  // Produtos já carregados do orçamento
+        //let addedProducts = [...products];  // Copia os produtos já existentes
+    
+        // Função para coletar os dados do formulário
+        // Função para coletar os dados do formulário
+        function collectFormData() {
+            const name = document.getElementById("name").value.trim();
+            const nfe = document.getElementById("nfe").value.trim();
+            const customer = document.querySelector("[name='customer']").value;
+            const paymentType = paymentTypeSelect.value;
+            const observations = document.getElementById("observations").value.trim();
+            const isQuote = document.getElementById("is_quote").checked;
+
+            // Coleta os produtos da tabela de produtos adicionados
+            let totalPrice = 0;
+            const productsData = [];
+            document.querySelectorAll("#selectedProducts tr").forEach(row => {
+                const productId = row.getAttribute("data-product-id");
+                if (productId) {
+                    const quantity = row.querySelector("input[name='quantity']").value;
+                    const price = row.querySelector("input[name='price']").value;
+                    const subtotal = quantity * price;
+                    totalPrice += subtotal;
+
+                    productsData.push({
+                        id: parseInt(productId),
+                        quantity: parseFloat(quantity),
+                        price: parseFloat(price),
+                    });
+                }
+            });
+    
+            // Coleta as parcelas (se for boleto)
+            const installments = [];
+            if (paymentType === "BO") {
+                document.querySelectorAll(".boleto-entry").forEach(boleto => {
+                    const dueDate = boleto.querySelector("input[name='boleto_due_date[]']").value;
+                    const value = boleto.querySelector("input[name='boleto_amount[]']").value;
+                    if (dueDate && value) {
+                        installments.push({ due_date: dueDate, value: value });
+                    }
+                });
+            }
+    
+            return {
+                name,
+                nfe,
+                customer,
+                payment_type: paymentType,
+                observations,
+                is_quote: isQuote,
+                products: productsData,
+                installments,
+                full_price: totalPrice.toFixed(2),  // ✅ Adicionado o valor total
+            };
+        }
+    
+        // Envia o formulário para o backend
+        saleForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+    
+            const formData = collectFormData();
+            const quoteId = {{ quote.id }};  // ID do orçamento passado pelo Django
+    
+            try {
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+                const response = await fetch(`/quote/update/${quoteId}/`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify(formData),
+                });
+    
+                const result = await response.json();
+                if (result.success) {
+                    alert("Orçamento atualizado com sucesso!");
+                    location.reload();  // Recarrega a página para refletir as alterações
+                } else {
+                    alert(`Erro: ${result.error || result.message}`);
+                }
+            } catch (error) {
+                console.error("Erro ao enviar o formulário:", error);
+                alert("Erro ao atualizar o orçamento.");
+            }
+        });
+    });
+    
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{% endblock %}

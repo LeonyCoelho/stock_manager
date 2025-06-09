@@ -310,7 +310,7 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>
                                 ${product.product_id ? `${product.product_id} - ` : ""}
-                                ${product.product_name}
+                                ${product.product_name} - ${product.product_category} - ${product.product_manufaturer}
                                 ${!product.product_id ? `<span class="badge bg-danger ms-2">Removido</span>` : ""}
                             </span>
                             <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>

@@ -23,6 +23,9 @@ urlpatterns = [
     path('manufactures/', views.view_manufactures, name='view_manufactures'),
     path('manufacturers/new/', views.new_manufacturer, name='new_manufacturer'),
     path("manufacturers/delete/<int:manufacturer_id>/", views.delete_manufacturer, name="delete_manufacturer"),
+    path('categorys/', views.view_categorys, name='view_categorys'),
+    path('categorys/new/', views.new_category, name='new_category'),
+    path("category/delete/<int:category_id>/", views.delete_category, name="delete_category"),
 
     path('products/new/', views.new_product, name='new_product'),
     path('products/', views.view_products, name='view_products'),
@@ -50,6 +53,7 @@ urlpatterns = [
     path('add-sale/', views.add_sale, name='add_sale'),
     path('add-purchase/', views.add_purchase, name='add_purchase'),
     path('add-manufacturer/', views.add_manufacturer, name='add_manufacturer'),
+    path('add-category/', views.add_category, name='add_category'),
     path("api/stocks/<int:stock_id>/update/", views.update_stock, name="update_stock"),
     path('api/products/<int:product_id>/delete/', views.delete_product, name='delete_product'),
     path('api/boletos/<int:boleto_id>/pay/', views.pay_boleto, name='pay_boleto'),
@@ -61,8 +65,10 @@ urlpatterns = [
 
     # ========== GET API =====================================================
     path('api/quotes/', views.get_all_quotes, name='get_all_quotes'),
+    path("api/quotes/<int:quote_id>/", views.get_quote_data, name="get_quote_data"),
     path('api/categories/', views.get_all_categories, name='get_all_categories'),
     path('api/manufacturers/', views.get_all_manufacturers, name='get_all_manufacturers'),
+    path('api/category/', views.get_all_categorys, name='get_all_categorys'),
     path('api/customers/', views.get_all_customers, name='get_all_customers'),
     path('api/suppliers/', views.get_all_suppliers, name='get_all_suppliers'),
     path('api/products/', views.get_all_products, name='get_all_products'),
@@ -71,6 +77,7 @@ urlpatterns = [
     path('api/unit-types/', views.get_unit_types, name='get_unit_types'),
     path('api/stocks/', views.get_all_stocks, name='get_all_stocks'),
     path('api/sales/', views.get_all_sales, name='get_all_sales'),
+    path('api/confirmed-sales/', views.get_all_confirmed_sales, name='get_all_confirmed_sales'),
     path('api/purchases/', views.get_all_purchases, name='get_all_purchases'),
     path('api/summary/', views.get_summary, name='api_summary'),
     path('api/sales/latest/', views.get_latest_sales, name='api_latest_sales'),

@@ -43,7 +43,7 @@
 <script>
 
     document.addEventListener("DOMContentLoaded", function () {
-        const apiUrl = "/api/sales/";
+        const apiUrl = "/api/confirmed-sales/";
         const rowsPerPage = 20;
         let currentPage = 1;
         let salesData = [];
@@ -51,7 +51,7 @@
     
         window.fetchSales = async function (searchQuery = "") {
             try {
-                let url = "/api/sales/";
+                let url = "/api/confirmed-sales/";
                 if (searchQuery.trim() !== "") {
                     url += `?search=${encodeURIComponent(searchQuery)}`;
                 }
@@ -122,7 +122,7 @@
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>
                                 ${product.product_id ? `${product.product_id} - ` : ""}
-                                ${product.product_name}
+                                ${product.product_name} - ${product.product_category} - ${product.product_manufaturer}
                                 ${!product.product_id ? `<span class="badge bg-danger ms-2">Removido</span>` : ""}
                             </span>
                             <span>Quantidade: ${product.quantity} | Unitário: R$${product.price.toFixed(2)} | Total: R$${product.total_price.toFixed(2)}</span>
@@ -132,29 +132,56 @@
         
                 // Modais de detalhes
                 modals += `
-                    <div class="modal fade" id="saleModal${sale.sale_id}" tabindex="-1" aria-labelledby="detailsModalLabel${sale.sale_id}" aria-hidden="true">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="detailsModalLabel${sale.sale_id}">Detalhes da Venda</h1>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <h5>Cliente: ${sale.customer_name}</h5>
-                                    <h5>Data: ${new Date(sale.sale_created).toLocaleString()}</h5>
-                                    <h5>Valor Total: R$${sale.full_price.toFixed(2)}</h5>
-                                    <hr>
-                                    <h6>Produtos:</h6>
-                                    <ul class="list-group">
-                                        ${productList}
-                                    </ul>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <div class="modal fade" id="saleModal${sale.sale_id}" tabindex="-1" aria-labelledby="detailsModalLabel${sale.sale_id}" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="detailsModalLabel${sale.sale_id}">Detalhes da Venda #${sale.sale_id}</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <h5><strong>Nome da venda:</strong> ${sale.sale_name}</h5>
+                    <h5><strong>Nº da Nota:</strong> ${sale.nfe || "N/A"}</h5>
+                    <h5><strong>Data:</strong> ${new Date(sale.sale_created).toLocaleString()}</h5>
+                    <h5><strong>Cliente:</strong> ${sale.customer_name || "Não informado"}</h5>
+                    <h5><strong>Observações:</strong> ${sale.observations || "Nenhuma"}</h5>
+                    <h5><strong>É orçamento?:</strong> ${sale.is_quote ? "Sim" : "Não"}</h5>
+                    <h5><strong>Desconto:</strong> R$${sale.discount?.toFixed(2) || "0.00"}</h5>
+                    <h5><strong>Valor Total:</strong> R$${sale.full_price.toFixed(2)}</h5>
+                    
+                    <hr>
+                    <h6>Produtos:</h6>
+                    <ul class="list-group mb-3">
+                        ${productList}
+                    </ul>
+
+                    ${sale.payments?.length ? `
+                    <h6>Pagamentos:</h6>
+                    <ul class="list-group mb-3">
+                        ${sale.payments.map(payment => `
+                            <li class="list-group-item">
+                                ${payment.payment_type} - R$${payment.amount.toFixed(2)}
+                                ${payment.credit_installments > 1 ? `(Parcelado em ${payment.credit_installments}x)` : ""}
+                            </li>
+                        `).join("")}
+                    </ul>` : ""}
+
+                    ${sale.boletos?.length ? `
+                    <h6>Boletos:</h6>
+                    <ul class="list-group">
+                        ${sale.boletos.map(boleto => `
+                            <li class="list-group-item">
+                                Valor: R$${boleto.value.toFixed(2)} | Vencimento: ${new Date(boleto.due_date).toLocaleDateString()} | Status: ${boleto.status}
+                            </li>
+                        `).join("")}
+                    </ul>` : ""}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
         
                     <div class="modal fade" id="deleteSaleModal${sale.sale_id}" tabindex="-1" aria-labelledby="deleteSaleLabel${sale.sale_id}" aria-hidden="true">
                         <div class="modal-dialog">

@@ -33,7 +33,7 @@
 
                 <!-- Lista de resultados da busca -->
                 <div class="mb-3">
-                    <div id="product-table-container"> 
+                    <div id="product-table-container" class="product-list-container"> 
                         <ul class="list-group" id="productResults"></ul>
                     </div>
                 </div>
@@ -100,7 +100,7 @@
             .map(
                 (product) => `  
                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                    ${product.name} - ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
+                    ${product.name} - ${product.category} - ${product.manufacturer} | ${product.weight}${product.unit_type}, ${product.size}, ${product.quantity_per_package} folhas
                     <button type="button" class="btn btn-sm btn-success" onclick="addProduct(${product.id})">Adicionar</button>
                 </li>
             `
@@ -139,7 +139,7 @@ function renderSelectedProducts() {
         .map(
             (product) => `
             <tr>
-                <td>${product.name}</td>
+                <td>${product.name} - ${product.category} - ${product.manufacturer}</td>
                 <td>
                     <input
                         type="number"

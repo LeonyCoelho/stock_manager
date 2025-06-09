@@ -5,25 +5,31 @@
     <!-- ===================== BOTOES DE ACESSO ================================= -->
 
      <div class="row">
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_stocks' %}">Estoque</a>
         </div>
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_sales' %}">Vendas</a>
         </div>
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_customers' %}">Clientes</a>
+        </div>
+        <div class="d-grid gap-2 col-3">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_manufactures' %}">Fabricantes</a>
         </div>
      </div>
      <div class="row">
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_products' %}">Produtos</a>
         </div>
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_purchases' %}">Compras</a>
         </div>
-        <div class="d-grid gap-2 col-4">
+        <div class="d-grid gap-2 col-3">
             <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_suppliers' %}">Fornecedores</a>
+        </div>
+        <div class="d-grid gap-2 col-3">
+            <a class="btn btn-secondary mb-3 pt-4 pb-4 " href="{% url 'view_categorys' %}">Categorias</a>
         </div>
      </div>
 
@@ -63,20 +69,23 @@
                Produtos com pendências em estoque
             </div>
             <div class="card-body">
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Produto</th>
-                            <th>Categoria</th>
-                            <th>Quantidade</th>
-                            <th>Preço</th>
-                        </tr>
-                    </thead>
-                    <tbody id="negative-stocks-table">
-                        <!-- Conteúdo será preenchido via JavaScript -->
-                    </tbody>
-                </table>
+                <div class="negative-list-container">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Categoria</th>
+                                <th>Fabricante</th>
+                                <th>Quantidade</th>
+                                <th>Preço</th>
+                            </tr>
+                        </thead>
+                        <tbody id="negative-stocks-table">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -86,9 +95,11 @@
             📝 Orçamentos em Aberto
         </div>
         <div class="card-body">
-            <ul id="quote-list" class="list-group">
-                <li class="list-group-item text-muted">Carregando...</li>
-            </ul>
+            <div class="quote-list-container">
+                <ul id="quote-list" class="list-group">
+                    <li class="list-group-item text-muted">Carregando...</li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -582,6 +593,7 @@
                                     <td>${stock.product_id}</td>
                                     <td>${stock.product_name}</td>
                                     <td>${stock.category}</td>
+                                    <td>${stock.manufacturer}</td>
                                     <td>${stock.quantity}</td>
                                     <td>R$ ${stock.price.toFixed(2)}</td>
                                 </tr>
